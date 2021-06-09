@@ -49,6 +49,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	return client, nil
 }
 
+//// Constants
 const (
 	ColumnDescriptionTitle = "Title of the resource"
 )
