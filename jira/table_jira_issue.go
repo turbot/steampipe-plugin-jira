@@ -29,25 +29,19 @@ func tableIssue(_ context.Context) *plugin.Table {
 		Columns: []*plugin.Column{
 			{
 				Name:        "id",
-				Description: "Issue unique identifier.",
+				Description: "The ID of the issue.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromGo(),
 			},
 			{
-				Name:        "self",
-				Description: "A friendly name that identifies the user.",
-				Type:        proto.ColumnType_STRING,
-			},
-			{
 				Name:        "key",
-				Description: "A friendly name that identifies the user.",
+				Description: "The key of the issue.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:        "project_key",
-				Description: "A friendly key that identifies the project.",
+				Name:        "self",
+				Description: "The URL of the issue details.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Project.Key"),
 			},
 			{
 				Name:        "project_name",
@@ -56,16 +50,34 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Project.Name"),
 			},
 			{
-				Name:        "description",
-				Description: "Description of the issue.",
+				Name:        "project_key",
+				Description: "A friendly key that identifies the project.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Description"),
+				Transform:   transform.FromField("Fields.Project.Key"),
 			},
 			{
 				Name:        "created",
 				Description: "Time when the issue was created.",
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromField("Fields.Created").Transform(convertTimestamp),
+			},
+			{
+				Name:        "description",
+				Description: "Description of the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Description"),
+			},
+			{
+				Name:        "summary",
+				Description: "Details of the user/application that created the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Summary"),
+			},
+			{
+				Name:        "updated",
+				Description: "Time when the issue was last updated.",
+				Type:        proto.ColumnType_TIMESTAMP,
+				Transform:   transform.FromField("Fields.Updated").Transform(convertTimestamp),
 			},
 			{
 				Name:        "priority",
@@ -108,7 +120,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "title",
 				Description: ColumnDescriptionTitle,
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("ID"),
+				Transform:   transform.FromField("Key"),
 			},
 		},
 	}
