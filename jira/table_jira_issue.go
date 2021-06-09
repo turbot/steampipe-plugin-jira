@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/grpc/proto"
@@ -17,23 +18,15 @@ func tableIssue(_ context.Context) *plugin.Table {
 		Name:             "jira_issue",
 		Description:      "Jira Issue",
 		DefaultTransform: transform.FromCamel(),
+		Get: &plugin.GetConfig{
+			KeyColumns: plugin.SingleColumn("id"),
+			Hydrate:    getIssue,
+		},
 		List: &plugin.ListConfig{
 			KeyColumns: plugin.SingleColumn("project_key"),
 			Hydrate:    listIssues,
 		},
 		Columns: []*plugin.Column{
-			{
-				Name:        "project_key",
-				Description: "A friendly key that identifies the project.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Project.Key"),
-			},
-			{
-				Name:        "project_name",
-				Description: "Name of the project to that issue belongs.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Project.Name"),
-			},
 			{
 				Name:        "id",
 				Description: "Issue unique identifier.",
@@ -49,6 +42,18 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "key",
 				Description: "A friendly name that identifies the user.",
 				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "project_key",
+				Description: "A friendly key that identifies the project.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Project.Key"),
+			},
+			{
+				Name:        "project_name",
+				Description: "Name of the project to that issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Project.Name"),
 			},
 			{
 				Name:        "description",
@@ -128,6 +133,9 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 		chunk, resp, err := client.Issue.Search("project = "+projectName, opt)
 		if err != nil {
+			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
+				return nil, nil
+			}
 			return nil, err
 		}
 
@@ -144,5 +152,22 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			return nil, nil
 		}
 	}
+}
 
+//// HYDRATE FUNCTION
+
+func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	issueId := d.KeyColumnQuals["id"].GetStringValue()
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+
+	issue, _, err := client.Issue.Get(issueId, &jira.GetQueryOptions{})
+	if err != nil && isNotFoundError(err) {
+		return nil, nil
+	}
+
+	return issue, err
 }
