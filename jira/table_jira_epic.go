@@ -16,7 +16,7 @@ import (
 func tableEpic(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_epic",
-		Description:      "Jira Epic",
+		Description:      "An epic is essentially a large user story that can be broken down into a number of smaller stories. An epic can span more than one project.",
 		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.AnyColumn([]string{"id", "key"}),
@@ -28,39 +28,38 @@ func tableEpic(_ context.Context) *plugin.Table {
 		Columns: []*plugin.Column{
 			{
 				Name:        "id",
-				Description: "A friendly key that identifies the project.",
+				Description: "The id of the epic.",
 				Type:        proto.ColumnType_INT,
 			},
 			{
 				Name:        "name",
-				Description: "Issue unique identifier.",
+				Description: "The name of the epic.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
 				Name:        "key",
-				Description: "Name of the project to that issue belongs.",
+				Description: "The key of the epic.",
 				Type:        proto.ColumnType_STRING,
 			},
-
+			{
+				Name:        "done",
+				Description: "Indicates the status of the epic.",
+				Type:        proto.ColumnType_BOOL,
+			},
 			{
 				Name:        "self",
-				Description: "A friendly name that identifies the user.",
+				Description: "The URL of the epic details.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
 				Name:        "summary",
-				Description: "A friendly name that identifies the user.",
+				Description: "Description of the epic.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
 				Name:        "color",
-				Description: "Description of the issue.",
+				Description: "Label colour details for the epic.",
 				Type:        proto.ColumnType_JSON,
-			},
-			{
-				Name:        "done",
-				Description: "Time when the issue was created.",
-				Type:        proto.ColumnType_BOOL,
 			},
 
 			// Standard columns

@@ -38,7 +38,7 @@ func tableDashboard(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "self",
-				Description: "The URL of these dashboard details.",
+				Description: "The URL of the dashboard details.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
