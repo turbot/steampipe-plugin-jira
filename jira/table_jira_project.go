@@ -16,7 +16,7 @@ import (
 func tableProject(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_project",
-		Description:      "Jira Project",
+		Description:      "Project is a collection of issues (stories, bugs, tasks, etc).",
 		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),

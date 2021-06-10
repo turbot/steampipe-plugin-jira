@@ -15,7 +15,7 @@ import (
 func tableBoard(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_board",
-		Description:      "Jira Board",
+		Description:      "A board displays issues from one or more projects, giving you a flexible way of viewing, managing, and reporting on work in progress.",
 		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
@@ -26,29 +26,31 @@ func tableBoard(_ context.Context) *plugin.Table {
 		},
 		Columns: []*plugin.Column{
 			{
-				Name:        "name",
-				Description: "A friendly name that identifies the board.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromGo(),
-			},
-			{
 				Name:        "id",
-				Description: "The unique identifier of board.",
+				Description: "The ID of the board.",
 				Type:        proto.ColumnType_INT,
 				Transform:   transform.FromGo(),
 			},
 			{
-				Name: "self",
-				Type: proto.ColumnType_STRING,
+				Name:        "name",
+				Description: "The name of the board.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name: "type",
-				Type: proto.ColumnType_STRING,
+				Name:        "self",
+				Description: "The URL of the board details.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:      "filter_id",
-				Type:      proto.ColumnType_INT,
-				Transform: transform.FromGo(),
+				Name:        "type",
+				Description: "The board type of the board. Valid values are simple, scrum and kanban.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "filter_id",
+				Description: "Filter id of the board.",
+				Type:        proto.ColumnType_INT,
+				Transform:   transform.FromGo(),
 			},
 
 			// Standard columns
@@ -114,3 +116,5 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 
 	return board, err
 }
+
+// https://support.atlassian.com/jira-software-cloud/docs/what-is-a-jira-software-board/
