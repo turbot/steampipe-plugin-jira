@@ -51,7 +51,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 
 //// Constants
 const (
-	ColumnDescriptionTitle = "Title of the resource"
+	ColumnDescriptionTitle = "Title of the resource."
 )
 
 func isNotFoundError(err error) bool {

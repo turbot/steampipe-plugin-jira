@@ -23,7 +23,7 @@ func tableUser(_ context.Context) *plugin.Table {
 		Columns: []*plugin.Column{
 			{
 				Name:        "display_name",
-				Description: "A friendly name that identifies the user.",
+				Description: "The display name of the user. Depending on the user’s privacy setting, this may return an alternative value.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
@@ -34,31 +34,36 @@ func tableUser(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "email_address",
-				Description: "The email address for the user.",
+				Description: "The email address of the user. Depending on the user’s privacy setting, this may be returned as null.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name: "account_type",
-				Type: proto.ColumnType_STRING,
+				Name:        "account_type",
+				Description: "The user account type. Can take the following values: atlassian, app, customer and unknown.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:      "active",
-				Type:      proto.ColumnType_BOOL,
-				Transform: transform.FromField("Active"),
+				Name:        "active",
+				Description: "Indicates if the user is active.",
+				Type:        proto.ColumnType_BOOL,
+				Transform:   transform.FromField("Active"),
 			},
 			{
-				Name: "self",
-				Type: proto.ColumnType_STRING,
+				Name:        "self",
+				Description: "The URL of the user.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name: "avatar_urls",
-				Type: proto.ColumnType_JSON,
+				Name:        "avatar_urls",
+				Description: "The avatars of the user.",
+				Type:        proto.ColumnType_JSON,
 			},
 			{
-				Name:      "user_groups",
-				Type:      proto.ColumnType_JSON,
-				Hydrate:   getUserGroups,
-				Transform: transform.FromValue(),
+				Name:        "groups",
+				Description: "The groups that the user belongs to.",
+				Type:        proto.ColumnType_JSON,
+				Hydrate:     getUserGroups,
+				Transform:   transform.FromValue(),
 			},
 
 			// Standard columns
