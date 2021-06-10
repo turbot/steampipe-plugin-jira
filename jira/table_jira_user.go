@@ -15,7 +15,7 @@ import (
 func tableUser(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_user",
-		Description:      "Jira User",
+		Description:      "User in the Jira cloud.",
 		DefaultTransform: transform.FromCamel(),
 		List: &plugin.ListConfig{
 			Hydrate: listUsers,
