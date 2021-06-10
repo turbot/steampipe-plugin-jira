@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/plugin/transform"
 
@@ -15,7 +16,7 @@ import (
 func tableDashboard(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_dashboard",
-		Description:      "Jira Dashboard",
+		Description:      "Your dashboard is the main display you see when you log in to Jira.",
 		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
@@ -24,46 +25,55 @@ func tableDashboard(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listDashboards,
 		},
-
 		Columns: []*plugin.Column{
 			{
 				Name:        "id",
-				Description: "Friendly name of the atlassian group.",
+				Description: "The ID of the dashboard.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
 				Name:        "name",
-				Description: "Friendly name of the atlassian group.",
+				Description: "The name of the dashboard.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:        "owner",
-				Description: "Friendly name of the atlassian group.",
+				Name:        "self",
+				Description: "The URL of these dashboard details.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
 				Name:        "is_favourite",
-				Description: "Friendly name of the atlassian group.",
+				Description: "Indicates if the dashboard is selected as a favorite by the user.",
 				Type:        proto.ColumnType_BOOL,
 			},
 			{
-				Name:        "self",
-				Description: "Friendly name of the atlassian group.",
-				Type:        proto.ColumnType_STRING,
+				Name:        "popularity",
+				Description: "The number of users who have this dashboard as a favorite.",
+				Type:        proto.ColumnType_INT,
 			},
 			{
-				Name:        "popularity",
-				Description: "Friendly name of the atlassian group.",
+				Name:        "rank",
+				Description: "The rank of this dashboard.",
 				Type:        proto.ColumnType_INT,
 			},
 			{
 				Name:        "view",
-				Description: "Friendly name of the atlassian group.",
+				Description: "The URL of the dashboard.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
+				Name:        "owner",
+				Description: "The user info of owner of the dashboard.",
+				Type:        proto.ColumnType_JSON,
+			},
+			{
+				Name:        "edit_permissions",
+				Description: "The details of any edit share permissions for the dashboard.",
+				Type:        proto.ColumnType_JSON,
+			},
+			{
 				Name:        "share_permissions",
-				Description: "Friendly name of the atlassian group.",
+				Description: "The details of any view share permissions for the dashboard.",
 				Type:        proto.ColumnType_JSON,
 			},
 
@@ -157,14 +167,21 @@ type Dashboard struct {
 	Id               string            `json:"id"`
 	IsFavourite      bool              `json:"isFavourite"`
 	Name             string            `json:"name"`
-	Owner            string            `json:"owner"`
+	Owner            jira.User         `json:"owner"`
 	Popularity       int64             `json:"popularity"`
+	Rank             int32             `json:"rank"`
 	Self             string            `json:"self"`
 	SharePermissions []SharePermission `json:"sharePermissions"`
+	EditPermissions  []SharePermission `json:"editPermissions"`
 	View             string            `json:"view"`
 }
 
 type SharePermission struct {
+	Id   int64  `json:"id"`
+	Type string `json:"type"`
+}
+
+type Owner struct {
 	Id   int64  `json:"id"`
 	Type string `json:"type"`
 }
