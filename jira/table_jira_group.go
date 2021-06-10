@@ -16,7 +16,7 @@ import (
 func tableGroup(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_group",
-		Description:      "Jira Group",
+		Description:      "Group is a collection of users. Administrators create groups so that the administrator can assign permissions to a number of people at once.",
 		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
@@ -25,21 +25,20 @@ func tableGroup(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listGroups,
 		},
-
 		Columns: []*plugin.Column{
 			{
 				Name:        "name",
-				Description: "Friendly name of the atlassian group.",
+				Description: "The name of the group.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
 				Name:        "id",
-				Description: "Unique identifier of the atlassian group.",
+				Description: "The ID of the group, if available, which uniquely identifies the group across all Atlassian products. For example, 952d12c3-5b5b-4d04-bb32-44d383afc4b2.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("GroupId"),
 			},
 			{
-				Name:        "group_members",
+				Name:        "members",
 				Description: "Members associated with the group.",
 				Type:        proto.ColumnType_JSON,
 				Hydrate:     getGroupMembers,
