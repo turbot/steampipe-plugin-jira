@@ -59,11 +59,11 @@ func tableUser(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_JSON,
 			},
 			{
-				Name:        "groups",
+				Name:        "group_names",
 				Description: "The groups that the user belongs to.",
 				Type:        proto.ColumnType_JSON,
 				Hydrate:     getUserGroups,
-				Transform:   transform.FromValue(),
+				Transform:   transform.From(groupNames),
 			},
 
 			// Standard columns
@@ -118,4 +118,15 @@ func getUserGroups(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateDa
 	}
 
 	return groups, nil
+}
+
+//// TRANSFORM FUNCTION
+
+func groupNames(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	userGroups := d.HydrateItem.(*[]jira.UserGroup)
+	var groupNames []string
+	for _, group := range *userGroups {
+		groupNames = append(groupNames, group.Name)
+	}
+	return groupNames, nil
 }

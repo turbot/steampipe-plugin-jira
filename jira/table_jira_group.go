@@ -38,11 +38,11 @@ func tableGroup(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("GroupId"),
 			},
 			{
-				Name:        "members",
-				Description: "Members associated with the group.",
+				Name:        "member_ids",
+				Description: "List of account ids of users associated with the group.",
 				Type:        proto.ColumnType_JSON,
 				Hydrate:     getGroupMembers,
-				Transform:   transform.FromValue(),
+				Transform:   transform.From(memberIds),
 			},
 
 			// Standard columns
@@ -164,6 +164,19 @@ func getGroupMembers(ctx context.Context, d *plugin.QueryData, h *plugin.Hydrate
 		}
 	}
 }
+
+//// TRANSFORM FUNCTION
+
+func memberIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	// return time.Time(d.Value.(jira.Time)), nil
+	var memberIds []string
+	for _, member := range d.HydrateItem.([]jira.GroupMember) {
+		memberIds = append(memberIds, member.AccountID)
+	}
+	return memberIds, nil
+}
+
+//// Required Structs
 
 type ListGroupResult struct {
 	MaxResults int     `json:"maxResults"`
