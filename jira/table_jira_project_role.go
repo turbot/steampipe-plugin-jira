@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/plugin/transform"
 
@@ -36,17 +37,25 @@ func tableProjectRole(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name: "self",
-				Type: proto.ColumnType_STRING,
-			},
-			{
-				Name:        "description",
-				Description: "A description of the project role.",
+				Name:        "self",
+				Description: "The URL the project role details.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name: "actors",
-				Type: proto.ColumnType_JSON,
+				Name:        "description",
+				Description: "The description of the project role.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "actor_ids",
+				Description: "The list of user ids who act in this role.",
+				Type:        proto.ColumnType_JSON,
+				Transform:   transform.From(extractActorIds),
+			},
+			{
+				Name:        "actors",
+				Description: "The list of users who act in this role.",
+				Type:        proto.ColumnType_JSON,
 			},
 
 			// Standard columns
@@ -103,4 +112,14 @@ func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 	}
 
 	return role, err
+}
+
+//// TRANSFORM FUNCTION
+
+func extractActorIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	var actorIds []int
+	for _, actor := range d.HydrateItem.(*jira.Role).Actors {
+		actorIds = append(actorIds, actor.ID)
+	}
+	return actorIds, nil
 }
