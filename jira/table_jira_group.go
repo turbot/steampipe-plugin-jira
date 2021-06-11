@@ -168,7 +168,6 @@ func getGroupMembers(ctx context.Context, d *plugin.QueryData, h *plugin.Hydrate
 //// TRANSFORM FUNCTION
 
 func memberIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
-	// return time.Time(d.Value.(jira.Time)), nil
 	var memberIds []string
 	for _, member := range d.HydrateItem.([]jira.GroupMember) {
 		memberIds = append(memberIds, member.AccountID)
