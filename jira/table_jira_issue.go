@@ -16,7 +16,7 @@ import (
 func tableIssue(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_issue",
-		Description:      "Jira Issue",
+		Description:      "Issues help manage code, estimate workload, and keep track of team.",
 		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
@@ -27,6 +27,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 			Hydrate:    listIssues,
 		},
 		Columns: []*plugin.Column{
+			// top fields
 			{
 				Name:        "id",
 				Description: "The ID of the issue.",
@@ -44,16 +45,30 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:        "project_name",
-				Description: "Name of the project to that issue belongs.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Project.Name"),
-			},
-			{
 				Name:        "project_key",
 				Description: "A friendly key that identifies the project.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Project.Key"),
+			},
+			{
+				Name:        "status",
+				Description: "Json object containing important subfields info the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Status.Name"),
+			},
+
+			// other important fields
+			{
+				Name:        "assignee",
+				Description: "Account Id the user/application that the issue is assigned to work.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Assignee.AccountID"),
+			},
+			{
+				Name:        "creator",
+				Description: "Account Id of the user/application that created the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Creator.AccountID"),
 			},
 			{
 				Name:        "created",
@@ -68,6 +83,36 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Description"),
 			},
 			{
+				Name:        "type",
+				Description: "The name of the issue type.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Type.Name"),
+			},
+			{
+				Name:        "labels",
+				Description: "A list of labels applied to the issue.",
+				Type:        proto.ColumnType_JSON,
+				Transform:   transform.FromField("Fields.Labels"),
+			},
+			{
+				Name:        "priority",
+				Description: "Priority assigned to the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Priority.Name"),
+			},
+			{
+				Name:        "project_name",
+				Description: "Name of the project to that issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Project.Name"),
+			},
+			{
+				Name:        "reporter",
+				Description: "Account Id of the user/application issue is reported.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Reporter.AccountID"),
+			},
+			{
 				Name:        "summary",
 				Description: "Details of the user/application that created the issue.",
 				Type:        proto.ColumnType_STRING,
@@ -79,40 +124,18 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromField("Fields.Updated").Transform(convertTimestamp),
 			},
+
+			// JSON fields
 			{
-				Name:        "priority",
-				Description: "Priority assigned to the issue.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Priority.Name"),
-			},
-			{
-				Name:        "labels",
-				Description: "A list of labels applied to the issue.",
+				Name:        "components",
+				Description: "List of components associated with the issue.",
 				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromField("Fields.Labels"),
-			},
-			{
-				Name:        "assignee",
-				Description: "Details of the user/application that the issue is assigned to work.",
-				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromField("Fields.Assignee"),
-			},
-			{
-				Name:        "creator",
-				Description: "Details of the user/application that created the issue.",
-				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromField("Fields.Creator"),
+				Transform:   transform.FromField("Fields.Components").Transform(extractComponentIds),
 			},
 			{
 				Name:        "fields",
-				Description: "Json object containing important subfields info the issue.",
+				Description: "Json object containing important subfields of the issue.",
 				Type:        proto.ColumnType_JSON,
-			},
-			{
-				Name:        "components",
-				Description: "Components are subsections of a project. They are used to group issues within a project into smaller parts.",
-				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromField("Fields.Components"),
 			},
 
 			// Standard columns
@@ -182,4 +205,14 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	}
 
 	return issue, err
+}
+
+//// TRANSFORM FUNCTION
+
+func extractComponentIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	var componentIds []string
+	for _, item := range d.Value.([]*jira.Component) {
+		componentIds = append(componentIds, item.ID)
+	}
+	return componentIds, nil
 }
