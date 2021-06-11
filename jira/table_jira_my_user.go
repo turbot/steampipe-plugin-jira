@@ -15,7 +15,7 @@ import (
 func tableMyUser(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_my_user",
-		Description:      "Details of the your own user.",
+		Description:      "Details of the your own jira user.",
 		DefaultTransform: transform.FromCamel(),
 		List: &plugin.ListConfig{
 			Hydrate: getMyUser,
@@ -23,7 +23,7 @@ func tableMyUser(_ context.Context) *plugin.Table {
 		Columns: []*plugin.Column{
 			{
 				Name:        "display_name",
-				Description: "A friendly name that identifies the user.",
+				Description: "The display name of the user. Depending on the user’s privacy setting, this may return an alternative value.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
@@ -38,25 +38,29 @@ func tableMyUser(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:      "active",
-				Type:      proto.ColumnType_BOOL,
-				Transform: transform.FromField("Active"),
+				Name:        "active",
+				Description: "Indicates if user is active.",
+				Type:        proto.ColumnType_BOOL,
 			},
 			{
-				Name: "self",
-				Type: proto.ColumnType_STRING,
+				Name:        "self",
+				Description: "The URL of the user.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name: "locale",
-				Type: proto.ColumnType_STRING,
+				Name:        "locale",
+				Description: "The locale of the user. Depending on the user’s privacy setting, this may be returned as null.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name: "time_zone",
-				Type: proto.ColumnType_STRING,
+				Name:        "time_zone",
+				Description: "The time zone specified in the user's profile. Depending on the user’s privacy setting, this may be returned as null.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name: "avatar_urls",
-				Type: proto.ColumnType_JSON,
+				Name:        "avatar_urls",
+				Description: "The avatars of the user.",
+				Type:        proto.ColumnType_JSON,
 			},
 
 			// Standard columns

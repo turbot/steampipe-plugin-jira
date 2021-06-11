@@ -44,7 +44,7 @@ func tableUser(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "active",
-				Description: "Indicates if the user is active.",
+				Description: "Indicates if user is active.",
 				Type:        proto.ColumnType_BOOL,
 				Transform:   transform.FromField("Active"),
 			},
