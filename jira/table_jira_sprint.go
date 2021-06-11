@@ -16,7 +16,7 @@ import (
 func tableSprint(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_sprint",
-		Description:      "Jira Sprint",
+		Description:      "Sprint is a short period in which the development team implements and delivers a discrete and potentially shippable application increment.",
 		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
@@ -29,8 +29,13 @@ func tableSprint(_ context.Context) *plugin.Table {
 		Columns: []*plugin.Column{
 			{
 				Name:        "id",
-				Description: "A friendly name that identifies the board.",
+				Description: "The ID of the sprint.",
 				Type:        proto.ColumnType_INT,
+			},
+			{
+				Name:        "name",
+				Description: "The name of the sprint.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
 				Name:        "board_id",
@@ -39,36 +44,42 @@ func tableSprint(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "self",
-				Description: "The unique identifier of board.",
+				Description: "The URL of the sprint details.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:        "name",
-				Description: "The unique identifier of board.",
-				Type:        proto.ColumnType_STRING,
+				Name:        "is_started",
+				Description: "True if sprint has started, and false if not.",
+				Type:        proto.ColumnType_BOOL,
+			},
+			{
+				Name:        "is_closed",
+				Description: "True if the sprint is closed, and false if not.",
+				Type:        proto.ColumnType_BOOL,
 			},
 			{
 				Name:        "start_date",
-				Description: "The unique identifier of board.",
+				Description: "The start timestamp of the sprint.",
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromCamel().NullIfZero(),
 			},
 			{
 				Name:        "end_date",
-				Description: "The unique identifier of board.",
+				Description: "The end timestamp of the sprint.",
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromCamel().NullIfZero(),
 			},
 			{
 				Name:        "complete_date",
-				Description: "The unique identifier of board.",
+				Description: "Date the sprint was marked as complete.",
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromCamel().NullIfZero(),
 			},
 			{
-				Name:      "origin_board_id",
-				Type:      proto.ColumnType_INT,
-				Transform: transform.FromCamel().NullIfZero(),
+				Name:        "origin_board_id",
+				Description: "ID of the board the sprint belongs to.",
+				Type:        proto.ColumnType_INT,
+				Transform:   transform.FromCamel().NullIfZero(),
 			},
 
 			// Standard columns
@@ -164,6 +175,8 @@ type Sprint struct {
 	Id            int64     `json:"id"`
 	Self          string    `json:"self"`
 	Name          string    `json:"name"`
+	IsStarted     bool      `json:"isStarted"`
+	IsClosed      bool      `json:"isClosed"`
 	State         string    `json:"state"`
 	EndDate       time.Time `json:"endDate"`
 	StartDate     time.Time `json:"startDate"`
