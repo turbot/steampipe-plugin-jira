@@ -2,7 +2,7 @@
 
 # Jira Plugin for Steampipe
 
-Use SQL to query infrastructure including servers, networks, facilities and more from jira.
+Use SQL to query infrastructure including servers, networks, facilities and more from Jira.
 
 - **[Get started →](https://hub.steampipe.io/plugins/turbot/jira)**
 - Documentation: [Table definitions & examples](https://hub.steampipe.io/plugins/turbot/jira/tables)
@@ -20,7 +20,7 @@ steampipe plugin install jira
 Run a query:
 
 ```sql
-select name, disk_state from jira_compute_disk where disk_state = 'Unattached'
+select name, id, summary from jira_epic;
 ```
 
 ## Developing
