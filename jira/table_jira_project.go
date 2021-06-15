@@ -62,6 +62,20 @@ func tableProject(_ context.Context) *plugin.Table {
 				Transform:   transform.FromCamel().NullIfZero(),
 			},
 			{
+				Name:        "lead_account_id",
+				Description: "The user account id of the project lead.",
+				Type:        proto.ColumnType_STRING,
+				Hydrate:     getProject,
+				Transform:   transform.FromField("Lead.AccountID"),
+			},
+			{
+				Name:        "lead_display_name",
+				Description: "The user display name of the project lead.",
+				Type:        proto.ColumnType_STRING,
+				Hydrate:     getProject,
+				Transform:   transform.FromField("Lead.DisplayName"),
+			},
+			{
 				Name:        "project_type_key",
 				Description: "The project type of the project. Valid values are software, service_desk and business.",
 				Type:        proto.ColumnType_STRING,
@@ -74,27 +88,22 @@ func tableProject(_ context.Context) *plugin.Table {
 			},
 
 			// json fields
+			// {
+			// 	Name:        "avatar_urls",
+			// 	Description: "The URLs of the project's avatars.",
+			// 	Type:        proto.ColumnType_JSON,
+			// },
 			{
-				Name:        "avatar_urls",
-				Description: "The URLs of the project's avatars.",
-				Type:        proto.ColumnType_JSON,
-			},
-			{
-				Name:        "components",
+				Name:        "component_ids",
 				Description: "List of the components contained in the project.",
 				Type:        proto.ColumnType_JSON,
 				Hydrate:     getProject,
+				Transform:   transform.FromField("Components").Transform(extractProjectComponentIds),
 			},
 			{
 				Name:        "issue_types",
 				Description: "List of the issue types available in the project.",
 				Type:        proto.ColumnType_JSON,
-			},
-			{
-				Name:        "lead",
-				Description: "The user details of the project lead.",
-				Type:        proto.ColumnType_JSON,
-				Hydrate:     getProject,
 			},
 			{
 				Name:        "project_category",
@@ -173,6 +182,18 @@ func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 
 	return project, err
 }
+
+//// TRANSFORM FUNCTION
+
+func extractProjectComponentIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	var componentIds []string
+	for _, item := range d.Value.([]jira.ProjectComponent) {
+		componentIds = append(componentIds, item.ID)
+	}
+	return componentIds, nil
+}
+
+//// Custom structs
 
 type ProjectList []Project
 
