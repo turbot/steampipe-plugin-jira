@@ -44,6 +44,13 @@ func tableGroup(_ context.Context) *plugin.Table {
 				Hydrate:     getGroupMembers,
 				Transform:   transform.From(memberIds),
 			},
+			{
+				Name:        "member_names",
+				Description: "List of names of users associated with the group.",
+				Type:        proto.ColumnType_JSON,
+				Hydrate:     getGroupMembers,
+				Transform:   transform.From(memberNames),
+			},
 
 			// Standard columns
 			{
@@ -173,6 +180,14 @@ func memberIds(_ context.Context, d *transform.TransformData) (interface{}, erro
 		memberIds = append(memberIds, member.AccountID)
 	}
 	return memberIds, nil
+}
+
+func memberNames(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	var memberNames []string
+	for _, member := range d.HydrateItem.([]jira.GroupMember) {
+		memberNames = append(memberNames, member.DisplayName)
+	}
+	return memberNames, nil
 }
 
 //// Required Structs
