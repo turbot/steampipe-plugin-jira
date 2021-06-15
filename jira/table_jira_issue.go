@@ -59,16 +59,28 @@ func tableIssue(_ context.Context) *plugin.Table {
 
 			// other important fields
 			{
-				Name:        "assignee",
+				Name:        "assignee_account_id",
 				Description: "Account Id the user/application that the issue is assigned to work.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Assignee.AccountID"),
 			},
 			{
-				Name:        "creator",
+				Name:        "assignee_display_name",
+				Description: "Display name the user/application that the issue is assigned to work.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Assignee.DisplayName"),
+			},
+			{
+				Name:        "creator_account_id",
 				Description: "Account Id of the user/application that created the issue.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Creator.AccountID"),
+			},
+			{
+				Name:        "creator_display_name",
+				Description: "Display name of the user/application that created the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Creator.DisplayName"),
 			},
 			{
 				Name:        "created",
@@ -107,10 +119,16 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Project.Name"),
 			},
 			{
-				Name:        "reporter",
+				Name:        "reporter_account_id",
 				Description: "Account Id of the user/application issue is reported.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Reporter.AccountID"),
+			},
+			{
+				Name:        "reporter_display_name",
+				Description: "Display name of the user/application issue is reported.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Reporter.DisplayName"),
 			},
 			{
 				Name:        "summary",
