@@ -47,6 +47,18 @@ func tableDashboard(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_BOOL,
 			},
 			{
+				Name:        "owner_account_id",
+				Description: "The user info of owner of the dashboard.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Owner.AccountID"),
+			},
+			{
+				Name:        "owner_display_name",
+				Description: "The user info of owner of the dashboard.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Owner.DisplayName"),
+			},
+			{
 				Name:        "popularity",
 				Description: "The number of users who have this dashboard as a favorite.",
 				Type:        proto.ColumnType_INT,
@@ -60,11 +72,6 @@ func tableDashboard(_ context.Context) *plugin.Table {
 				Name:        "view",
 				Description: "The URL of the dashboard.",
 				Type:        proto.ColumnType_STRING,
-			},
-			{
-				Name:        "owner",
-				Description: "The user info of owner of the dashboard.",
-				Type:        proto.ColumnType_JSON,
 			},
 			{
 				Name:        "edit_permissions",
