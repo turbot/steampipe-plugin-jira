@@ -2,7 +2,7 @@ package jira
 
 import (
 	"context"
-	"strconv"
+	"fmt"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
@@ -24,7 +24,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 			Hydrate:    getIssue,
 		},
 		List: &plugin.ListConfig{
-			// KeyColumns: plugin.SingleColumn("project_key"),
 			Hydrate: listIssues,
 		},
 		Columns: []*plugin.Column{
@@ -64,22 +63,22 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Status.Name"),
 			},
 			{
-				Name:        "epic_id",
-				Description: "The id of the epic to which issue belongs.",
-				Type:        proto.ColumnType_INT,
-				Transform:   transform.FromField("Fields.Epic.ID", "EpicID"),
-			},
-			{
 				Name:        "epic_key",
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Epic.Key", "EpicKey"),
+				Transform:   transform.FromP(extractRequiredField, "epic"),
 			},
 			{
-				Name:        "sprint_id",
-				Description: "The ID of the sprint to which issue belongs.",
-				Type:        proto.ColumnType_INT,
-				Transform:   transform.FromField("Fields.Sprint.ID", "SprintID"),
+				Name:        "sprint_ids",
+				Description: "The list of ids of the sprint to which issue belongs.",
+				Type:        proto.ColumnType_JSON,
+				Transform:   transform.FromP(extractRequiredField, "sprint").Transform(extractSprintIds),
+			},
+			{
+				Name:        "sprint_names",
+				Description: "The list of names of the sprint to which issue belongs.",
+				Type:        proto.ColumnType_JSON,
+				Transform:   transform.FromP(extractRequiredField, "sprint").Transform(extractSprintNames),
 			},
 
 			// other important fields
@@ -207,123 +206,23 @@ func tableIssue(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	quals := d.QueryContext.GetQuals()
-
-	var sprintId int64
-	var epicId int64
-	var epicKey string
-
-	jql := ""
-	if quals["project_key"] != nil {
-		for _, q := range quals["project_key"].Quals {
-			op := q.GetStringValue()
-			if op != "=" {
-				continue
-			}
-			filterPattern := q.Value.GetStringValue()
-			if filterPattern == "" {
-				continue
-			}
-			jql = jql + "project = " + filterPattern
-		}
-	}
-
-	if quals["project_id"] != nil {
-		for _, q := range quals["project_id"].Quals {
-			op := q.GetStringValue()
-			if op != "=" {
-				continue
-			}
-			filterPattern := q.Value.GetStringValue()
-			if filterPattern == "" {
-				continue
-			}
-
-			if jql == "" {
-				jql = jql + "project = " + filterPattern
-			} else {
-				jql = jql + "&project = " + filterPattern
-			}
-
-		}
-	}
-
-	if quals["sprint_id"] != nil {
-		for _, q := range quals["sprint_id"].Quals {
-			op := q.GetStringValue()
-			if op != "=" {
-				continue
-			}
-			sprintId = q.Value.GetInt64Value()
-			if sprintId == 0 {
-				continue
-			}
-
-			if jql == "" {
-				jql = jql + "sprint = " + strconv.Itoa(int(sprintId))
-			} else {
-				jql = jql + "&sprint = " + strconv.Itoa(int(sprintId))
-			}
-		}
-	}
-
-	if quals["epic_key"] != nil {
-		for _, q := range quals["epic_key"].Quals {
-			op := q.GetStringValue()
-			if op != "=" {
-				continue
-			}
-			epicKey := q.Value.GetStringValue()
-			if epicKey == "" {
-				continue
-			}
-
-			if jql == "" {
-				jql = jql + "\"Epic Link\" = " + epicKey
-			} else {
-				jql = jql + "&\"Epic Link\" = " + epicKey
-			}
-		}
-	}
-
-	if quals["epic_id"] != nil {
-		for _, q := range quals["epic_id"].Quals {
-			op := q.GetStringValue()
-			if op != "=" {
-				continue
-			}
-			epicId = q.Value.GetInt64Value()
-			if epicId == 0 {
-				continue
-			}
-
-			if jql == "" {
-				jql = jql + "\"Epic Link\" = " + strconv.Itoa(int(epicId))
-			} else {
-				jql = jql + "&\"Epic Link\" = " + strconv.Itoa(int(epicId))
-			}
-		}
-	}
-
-	// plugin.Logger(ctx).Debug("listIssues", "JQL", jql)
-
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
 	}
 
 	last := 0
-	var issues []jira.Issue
+	maxResults := 1000
+	var epicKey, sprintKey string
 	for {
-		opt := &jira.SearchOptions{
-			MaxResults: 1000, // Max results can go up to 1000
-			StartAt:    last,
-		}
 
-		// chunk, resp, err := client.Issue.Search("project = "+projectName, opt)
-		// chunk, resp, err := client.Issue.Search("\"Epic Link\" = SSP-24", opt)
-		// chunk, resp, err := client.Issue.Search("sprint = 1", opt)
-		chunk, resp, err := client.Issue.Search(jql, opt)
+		apiEndpoint := fmt.Sprintf(
+			"/rest/api/2/search?startAt=%d&maxResults=%d&expand=names",
+			last,
+			maxResults,
+		)
+
+		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
 			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 				return nil, nil
@@ -331,16 +230,28 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			return nil, err
 		}
 
-		total := resp.Total
-		if issues == nil {
-			issues = make([]jira.Issue, 0, total)
+		listIssuesResult := new(ListIssuesResult)
+		_, err = client.Do(req, listIssuesResult)
+		if err != nil {
+			return nil, err
 		}
 
-		for _, issue := range chunk {
-			d.StreamListItem(ctx, IssueInfo{issue, epicId, epicKey, sprintId})
+		epicKey = getFieldKey(ctx, d, listIssuesResult.Names, "Epic Link")
+		sprintKey = getFieldKey(ctx, d, listIssuesResult.Names, "Sprint")
+
+		keys := map[string]string{
+			"epic":   epicKey,
+			"sprint": sprintKey,
 		}
-		last = resp.StartAt + len(chunk)
-		if last >= total {
+
+		plugin.Logger(ctx).Error("List", "Keys", keys)
+
+		for _, issue := range listIssuesResult.Issues {
+			d.StreamListItem(ctx, IssueInfo{issue, keys})
+		}
+
+		last = listIssuesResult.StartAt + len(listIssuesResult.Issues)
+		if last >= listIssuesResult.Total {
 			return nil, nil
 		}
 	}
@@ -356,12 +267,22 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, err
 	}
 
-	issue, _, err := client.Issue.Get(issueId, &jira.GetQueryOptions{})
+	issue, _, err := client.Issue.Get(issueId, &jira.GetQueryOptions{
+		Expand: "names",
+	})
 	if err != nil && isNotFoundError(err) {
 		return nil, nil
 	}
 
-	return IssueInfo{*issue, 0, "", 0}, err
+	epicKey := getFieldKey(ctx, d, issue.Names, "Epic Link")
+	sprintKey := getFieldKey(ctx, d, issue.Names, "Sprint")
+
+	keys := map[string]string{
+		"epic":   epicKey,
+		"sprint": sprintKey,
+	}
+
+	return IssueInfo{*issue, keys}, err
 }
 
 //// TRANSFORM FUNCTION
@@ -372,6 +293,38 @@ func extractComponentIds(_ context.Context, d *transform.TransformData) (interfa
 		componentIds = append(componentIds, item.ID)
 	}
 	return componentIds, nil
+}
+
+func extractRequiredField(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	m := issueInfo.Fields.Unknowns
+	param := d.Param.(string)
+	return m[issueInfo.Keys[param]], nil
+}
+
+func extractSprintIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	if d.Value == nil {
+		return nil, nil
+	}
+	var sprintIds []interface{}
+	for _, item := range d.Value.([]interface{}) {
+		sprint := item.(map[string]interface{})
+		sprintIds = append(sprintIds, sprint["id"])
+	}
+
+	return sprintIds, nil
+}
+func extractSprintNames(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	if d.Value == nil {
+		return nil, nil
+	}
+	var sprintNames []interface{}
+	for _, item := range d.Value.([]interface{}) {
+		sprint := item.(map[string]interface{})
+		sprintNames = append(sprintNames, sprint["name"])
+	}
+
+	return sprintNames, nil
 }
 
 func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, error) {
@@ -386,11 +339,36 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 	return tags, nil
 }
 
-//// custom struct
+//// Utility Function
+
+// getFieldKey:: get key for unknown expanded fields
+func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]string, keyName string) string {
+	cacheKey := "issue-" + keyName
+	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
+		return cachedData.(string)
+	}
+
+	for k, v := range names {
+		if v == keyName {
+			d.ConnectionManager.Cache.Set(cacheKey, k)
+			return k
+		}
+	}
+	return ""
+}
+
+//// Required Structs
+
+type ListIssuesResult struct {
+	Expand     string            `json:"expand"`
+	MaxResults int               `json:"maxResults"`
+	StartAt    int               `json:"startAt"`
+	Total      int               `json:"total"`
+	Issues     []jira.Issue      `json:"issues"`
+	Names      map[string]string `json:"names,omitempty" structs:"names,omitempty"`
+}
 
 type IssueInfo struct {
 	jira.Issue
-	EpicID   int64
-	EpicKey  string
-	SprintID int64
+	Keys map[string]string
 }
