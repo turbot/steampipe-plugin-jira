@@ -57,3 +57,21 @@ where
   duedate > (current_date + interval '7' day)
   and duedate <= (current_date + interval '14' day);
 ```
+
+### Get issues for a sprint
+
+```sql
+select
+  id,
+  key,
+  summary,
+  project_key,
+  status,
+  assignee_display_name,
+  assignee_account_id,
+  duedate
+from
+  jira_issue
+where
+  sprint_id = 2;
+```
