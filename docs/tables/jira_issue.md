@@ -38,3 +38,22 @@ from
 where
   assignee_display_name = 'Lalit Bhardwaj';
 ```
+
+### Get issues due in next week
+
+```sql
+select
+  id,
+  key,
+  summary,
+  project_key,
+  status,
+  assignee_display_name,
+  assignee_account_id,
+  duedate
+from
+  jira_issue
+where
+  duedate > (current_date + interval '7' day)
+  and duedate <= (current_date + interval '14' day);
+```
