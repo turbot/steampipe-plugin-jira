@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
@@ -23,8 +24,8 @@ func tableIssue(_ context.Context) *plugin.Table {
 			Hydrate:    getIssue,
 		},
 		List: &plugin.ListConfig{
-			KeyColumns: plugin.SingleColumn("project_key"),
-			Hydrate:    listIssues,
+			// KeyColumns: plugin.SingleColumn("project_key"),
+			Hydrate: listIssues,
 		},
 		Columns: []*plugin.Column{
 			// top fields
@@ -51,10 +52,34 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Project.Key"),
 			},
 			{
+				Name:        "project_id",
+				Description: "A friendly key that identifies the project.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Project.ID"),
+			},
+			{
 				Name:        "status",
 				Description: "Json object containing important subfields info the issue.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Status.Name"),
+			},
+			{
+				Name:        "epic_id",
+				Description: "The id of the epic to which issue belongs.",
+				Type:        proto.ColumnType_INT,
+				Transform:   transform.FromField("Fields.Epic.ID", "EpicID"),
+			},
+			{
+				Name:        "epic_key",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Epic.Key", "EpicKey"),
+			},
+			{
+				Name:        "sprint_id",
+				Description: "The ID of the sprint to which issue belongs.",
+				Type:        proto.ColumnType_INT,
+				Transform:   transform.FromField("Fields.Sprint.ID", "SprintID"),
 			},
 
 			// other important fields
@@ -86,7 +111,13 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "created",
 				Description: "Time when the issue was created.",
 				Type:        proto.ColumnType_TIMESTAMP,
-				Transform:   transform.FromField("Fields.Created").Transform(convertTimestamp),
+				Transform:   transform.FromField("Fields.Created").Transform(convertJiraTime),
+			},
+			{
+				Name:        "duedate",
+				Description: "Time by which the issue is expected to be completed.",
+				Type:        proto.ColumnType_TIMESTAMP,
+				Transform:   transform.FromField("Fields.Duedate").Transform(convertJiraDate),
 			},
 			{
 				Name:        "description",
@@ -140,7 +171,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "updated",
 				Description: "Time when the issue was last updated.",
 				Type:        proto.ColumnType_TIMESTAMP,
-				Transform:   transform.FromField("Fields.Updated").Transform(convertTimestamp),
+				Transform:   transform.FromField("Fields.Updated").Transform(convertJiraTime),
 			},
 
 			// JSON fields
@@ -154,6 +185,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "fields",
 				Description: "Json object containing important subfields of the issue.",
 				Type:        proto.ColumnType_JSON,
+			},
+			{
+				Name:        "tags",
+				Type:        proto.ColumnType_JSON,
+				Description: "A map of label names associated with this issue, in Steampipe standard format.",
+				Transform:   transform.From(getIssueTags),
 			},
 
 			// Standard columns
@@ -170,7 +207,106 @@ func tableIssue(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	projectName := d.KeyColumnQuals["project_key"].GetStringValue()
+	quals := d.QueryContext.GetQuals()
+
+	var sprintId int64
+	var epicId int64
+	var epicKey string
+
+	jql := ""
+	if quals["project_key"] != nil {
+		for _, q := range quals["project_key"].Quals {
+			op := q.GetStringValue()
+			if op != "=" {
+				continue
+			}
+			filterPattern := q.Value.GetStringValue()
+			if filterPattern == "" {
+				continue
+			}
+			jql = jql + "project = " + filterPattern
+		}
+	}
+
+	if quals["project_id"] != nil {
+		for _, q := range quals["project_id"].Quals {
+			op := q.GetStringValue()
+			if op != "=" {
+				continue
+			}
+			filterPattern := q.Value.GetStringValue()
+			if filterPattern == "" {
+				continue
+			}
+
+			if jql == "" {
+				jql = jql + "project = " + filterPattern
+			} else {
+				jql = jql + "&project = " + filterPattern
+			}
+
+		}
+	}
+
+	if quals["sprint_id"] != nil {
+		for _, q := range quals["sprint_id"].Quals {
+			op := q.GetStringValue()
+			if op != "=" {
+				continue
+			}
+			sprintId = q.Value.GetInt64Value()
+			if sprintId == 0 {
+				continue
+			}
+
+			if jql == "" {
+				jql = jql + "sprint = " + strconv.Itoa(int(sprintId))
+			} else {
+				jql = jql + "&sprint = " + strconv.Itoa(int(sprintId))
+			}
+		}
+	}
+
+	if quals["epic_key"] != nil {
+		for _, q := range quals["epic_key"].Quals {
+			op := q.GetStringValue()
+			if op != "=" {
+				continue
+			}
+			epicKey := q.Value.GetStringValue()
+			if epicKey == "" {
+				continue
+			}
+
+			if jql == "" {
+				jql = jql + "\"Epic Link\" = " + epicKey
+			} else {
+				jql = jql + "&\"Epic Link\" = " + epicKey
+			}
+		}
+	}
+
+	if quals["epic_id"] != nil {
+		for _, q := range quals["epic_id"].Quals {
+			op := q.GetStringValue()
+			if op != "=" {
+				continue
+			}
+			epicId = q.Value.GetInt64Value()
+			if epicId == 0 {
+				continue
+			}
+
+			if jql == "" {
+				jql = jql + "\"Epic Link\" = " + strconv.Itoa(int(epicId))
+			} else {
+				jql = jql + "&\"Epic Link\" = " + strconv.Itoa(int(epicId))
+			}
+		}
+	}
+
+	// plugin.Logger(ctx).Debug("listIssues", "JQL", jql)
+
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
@@ -184,7 +320,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			StartAt:    last,
 		}
 
-		chunk, resp, err := client.Issue.Search("project = "+projectName, opt)
+		// chunk, resp, err := client.Issue.Search("project = "+projectName, opt)
+		// chunk, resp, err := client.Issue.Search("\"Epic Link\" = SSP-24", opt)
+		// chunk, resp, err := client.Issue.Search("sprint = 1", opt)
+		chunk, resp, err := client.Issue.Search(jql, opt)
 		if err != nil {
 			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 				return nil, nil
@@ -198,7 +337,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		for _, issue := range chunk {
-			d.StreamListItem(ctx, issue)
+			d.StreamListItem(ctx, IssueInfo{issue, epicId, epicKey, sprintId})
 		}
 		last = resp.StartAt + len(chunk)
 		if last >= total {
@@ -222,7 +361,7 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, nil
 	}
 
-	return issue, err
+	return IssueInfo{*issue, 0, "", 0}, err
 }
 
 //// TRANSFORM FUNCTION
@@ -233,4 +372,25 @@ func extractComponentIds(_ context.Context, d *transform.TransformData) (interfa
 		componentIds = append(componentIds, item.ID)
 	}
 	return componentIds, nil
+}
+
+func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	issue := d.HydrateItem.(IssueInfo)
+
+	tags := make(map[string]bool)
+	if issue.Fields != nil && issue.Fields.Labels != nil {
+		for _, i := range issue.Fields.Labels {
+			tags[i] = true
+		}
+	}
+	return tags, nil
+}
+
+//// custom struct
+
+type IssueInfo struct {
+	jira.Issue
+	EpicID   int64
+	EpicKey  string
+	SprintID int64
 }

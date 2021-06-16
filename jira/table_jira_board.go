@@ -50,7 +50,15 @@ func tableBoard(_ context.Context) *plugin.Table {
 				Name:        "filter_id",
 				Description: "Filter id of the board.",
 				Type:        proto.ColumnType_INT,
-				Transform:   transform.FromGo(),
+				Hydrate:     getBoardConfiguration,
+				Transform:   transform.FromField("Filter.ID"),
+			},
+			{
+				Name:        "sub_query",
+				Description: "JQL subquery used by the given board - (Kanban only).",
+				Type:        proto.ColumnType_STRING,
+				Hydrate:     getBoardConfiguration,
+				Transform:   transform.FromField("SubQuery.Query"),
 			},
 
 			// Standard columns
@@ -99,6 +107,8 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	}
 }
 
+//// HYDRATE FUNCTIONS
+
 func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	boardId := d.KeyColumnQuals["id"].GetInt64Value()
 	if boardId == 0 {
@@ -114,7 +124,23 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, nil
 	}
 
-	return board, err
+	return *board, err
+}
+
+func getBoardConfiguration(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	board := h.Item.(jira.Board)
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+
+	boardConfiguration, _, err := client.Board.GetBoardConfiguration(board.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return boardConfiguration, err
 }
 
 // https://support.atlassian.com/jira-software-cloud/docs/what-is-a-jira-software-board/

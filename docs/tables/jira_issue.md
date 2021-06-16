@@ -2,11 +2,9 @@
 
 Issues are the building blocks of any Jira project. An issue could represent a story, a bug, a task, or another issue type in your project.
 
-This tables requires an '=' qualifier for the following column: project_key
-
 ## Examples
 
-### List issues for a specific project
+### List issues for a specific project(can use column project_key or project_id )
 
 ```sql
 select
@@ -14,8 +12,8 @@ select
   key,
   project_key,
   created,
-  created,
-  assignee,
+  creator_display_name,
+  assignee_display_name,
   status,
   summary
 from
@@ -24,23 +22,19 @@ where
   project_key = 'TEST';
 ```
 
-### List all issues
+### List all issues assignment to a user
 
 ```sql
 select
-  i.id,
-  i.key,
-  i.project_key,
-  i.created,
-  i.created,
-  i.assignee,
-  i.status,
-  i.summary
+  id,
+  key,
+  summary,
+  project_key,
+  status,
+  assignee_display_name,
+  assignee_account_id
 from
-  jira_project p,
-  jira_issue i
+  jira_issue
 where
-  i.project_key = p.key
-order by
-  id;
+  assignee_display_name = 'Lalit Bhardwaj';
 ```

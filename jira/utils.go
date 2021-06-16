@@ -60,7 +60,12 @@ func isNotFoundError(err error) bool {
 
 //// TRANSFORM FUNCTION
 
-// convertTimestamp:: converts jira.Time to time.Time
-func convertTimestamp(_ context.Context, d *transform.TransformData) (interface{}, error) {
+// convertJiraTime:: converts jira.Time to time.Time
+func convertJiraTime(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	return time.Time(d.Value.(jira.Time)), nil
+}
+
+// convertJiraDate:: converts jira.Date to time.Time
+func convertJiraDate(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	return time.Time(d.Value.(jira.Date)), nil
 }
