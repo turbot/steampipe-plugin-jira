@@ -53,9 +53,10 @@ func tableProjectRole(_ context.Context) *plugin.Table {
 				Transform:   transform.From(extractActorIds),
 			},
 			{
-				Name:        "actors",
-				Description: "The list of users who act in this role.",
+				Name:        "actor_names",
+				Description: "The list of user ids who act in this role.",
 				Type:        proto.ColumnType_JSON,
+				Transform:   transform.From(extractActorNames),
 			},
 
 			// Standard columns
@@ -122,4 +123,12 @@ func extractActorIds(_ context.Context, d *transform.TransformData) (interface{}
 		actorIds = append(actorIds, actor.ID)
 	}
 	return actorIds, nil
+}
+
+func extractActorNames(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	var actorNames []string
+	for _, actor := range d.HydrateItem.(jira.Role).Actors {
+		actorNames = append(actorNames, actor.DisplayName)
+	}
+	return actorNames, nil
 }
