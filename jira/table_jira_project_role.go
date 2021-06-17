@@ -14,8 +14,8 @@ import (
 
 func tableProjectRole(_ context.Context) *plugin.Table {
 	return &plugin.Table{
-		Name:             "jira_project_role",
-		Description:      "Roles are a flexible way to associate users and/or groups with particular projects.",
+		Name:        "jira_project_role",
+		Description: "Project Roles are a flexible way to associate users and/or groups with particular projects.",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getProjectRole,
@@ -46,10 +46,10 @@ func tableProjectRole(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:        "actor_ids",
+				Name:        "actor_account_ids",
 				Description: "The list of user ids who act in this role.",
 				Type:        proto.ColumnType_JSON,
-				Transform:   transform.From(extractActorIds),
+				Transform:   transform.From(extractActorAccountIds),
 			},
 			{
 				Name:        "actor_names",
@@ -116,10 +116,10 @@ func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 
 //// TRANSFORM FUNCTION
 
-func extractActorIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
-	var actorIds []int
+func extractActorAccountIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	var actorIds []string
 	for _, actor := range d.HydrateItem.(jira.Role).Actors {
-		actorIds = append(actorIds, actor.ID)
+		actorIds = append(actorIds, actor.ActorUser.AccountID)
 	}
 	return actorIds, nil
 }
