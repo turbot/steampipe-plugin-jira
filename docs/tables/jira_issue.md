@@ -36,7 +36,7 @@ where
   project_key = 'TEST';
 ```
 
-### List all issues assignment to a user
+### List all issues assignment to specific user
 
 ```sql
 select
