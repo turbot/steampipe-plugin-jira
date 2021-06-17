@@ -2,7 +2,7 @@
 organization: Turbot
 category: ["public cloud"]
 icon_url: "/images/plugins/turbot/jira.svg"
-brand_color: "#FF9900"
+brand_color: "#2684FF"
 display_name: "Jira"
 short_name: "jira"
 description: "Steampipe plugin for querying sprints, issues, epics and more from Jira."
