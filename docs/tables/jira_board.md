@@ -50,5 +50,7 @@ select
   end_date
 from
   jira_sprint as s,
-  jira_board as b;
+  jira_board as b
+where
+  s.board_id = b.id;
 ```
