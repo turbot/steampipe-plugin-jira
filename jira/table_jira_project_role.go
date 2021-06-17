@@ -72,6 +72,9 @@ func tableProjectRole(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listProjectRoles(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listProjectRoles")
+
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
@@ -79,6 +82,7 @@ func listProjectRoles(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrat
 
 	roles, _, err := client.Role.GetList()
 	if err != nil {
+		logger.Error("listProjectRoles", "Error", err)
 		return nil, err
 	}
 
@@ -92,6 +96,9 @@ func listProjectRoles(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrat
 //// HYDRATE FUNCTION
 
 func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getProjectRole")
+
 	roleId := d.KeyColumnQuals["id"].GetInt64Value()
 
 	client, err := connect(ctx, d)
@@ -108,6 +115,7 @@ func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 		if isNotFoundError(err) {
 			return nil, nil
 		}
+		logger.Error("getProjectRole", "Error", err)
 		return nil, err
 	}
 

@@ -15,8 +15,8 @@ import (
 
 func tableEpic(_ context.Context) *plugin.Table {
 	return &plugin.Table{
-		Name:             "jira_epic",
-		Description:      "An epic is essentially a large user story that can be broken down into a number of smaller stories. An epic can span more than one project.",
+		Name:        "jira_epic",
+		Description: "An epic is essentially a large user story that can be broken down into a number of smaller stories. An epic can span more than one project.",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.AnyColumn([]string{"id", "key"}),
 			Hydrate:    getEpic,
@@ -75,6 +75,9 @@ func tableEpic(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listEpics")
+
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
@@ -97,6 +100,7 @@ func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 		listResult := new(ListEpicResult)
 		_, err = client.Do(req, listResult)
 		if err != nil {
+			logger.Error("listEpics", "Error", err)
 			return nil, err
 		}
 
@@ -114,6 +118,9 @@ func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 //// HYDRATE FUNCTION
 
 func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getEpic")
+
 	epicId := d.KeyColumnQuals["id"].GetInt64Value()
 	epicKey := d.KeyColumnQuals["key"].GetStringValue()
 	var apiEndpoint string
@@ -140,11 +147,14 @@ func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (i
 		if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 			return nil, nil
 		}
+		logger.Error("getEpic", "Error", err)
 		return nil, err
 	}
 
 	return epic, err
 }
+
+//// Custom Structs
 
 type ListEpicResult struct {
 	MaxResults int    `json:"maxResults"`

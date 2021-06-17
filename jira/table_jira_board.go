@@ -14,8 +14,8 @@ import (
 
 func tableBoard(_ context.Context) *plugin.Table {
 	return &plugin.Table{
-		Name:             "jira_board",
-		Description:      "A board displays issues from one or more projects, giving you a flexible way of viewing, managing, and reporting on work in progress.",
+		Name:        "jira_board",
+		Description: "A board displays issues from one or more projects, giving you a flexible way of viewing, managing, and reporting on work in progress.",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getBoard,
@@ -74,6 +74,8 @@ func tableBoard(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listBoards")
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
@@ -90,6 +92,7 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			SearchOptions: opt,
 		})
 		if err != nil {
+			logger.Error("listBoards", "Error", err)
 			return nil, err
 		}
 
@@ -109,6 +112,8 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 //// HYDRATE FUNCTIONS
 
 func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getBoard")
 	boardId := d.KeyColumnQuals["id"].GetInt64Value()
 	if boardId == 0 {
 		return nil, nil
@@ -119,14 +124,20 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	}
 
 	board, _, err := client.Board.GetBoard(int(boardId))
-	if err != nil && isNotFoundError(err) {
-		return nil, nil
+	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
+		logger.Error("getBoard", "Error", err)
+		return nil, err
 	}
 
 	return *board, err
 }
 
 func getBoardConfiguration(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getBoardConfiguration")
 	board := h.Item.(jira.Board)
 
 	client, err := connect(ctx, d)
@@ -136,6 +147,7 @@ func getBoardConfiguration(ctx context.Context, d *plugin.QueryData, h *plugin.H
 
 	boardConfiguration, _, err := client.Board.GetBoardConfiguration(board.ID)
 	if err != nil {
+		logger.Error("getBoardConfiguration", "Error", err)
 		return nil, err
 	}
 

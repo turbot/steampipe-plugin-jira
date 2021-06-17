@@ -15,8 +15,8 @@ import (
 
 func tableGroup(_ context.Context) *plugin.Table {
 	return &plugin.Table{
-		Name:             "jira_group",
-		Description:      "Group is a collection of users. Administrators create groups so that the administrator can assign permissions to a number of people at once.",
+		Name:        "jira_group",
+		Description: "Group is a collection of users. Administrators create groups so that the administrator can assign permissions to a number of people at once.",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getGroup,
@@ -65,6 +65,9 @@ func tableGroup(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listGroups(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listGroups")
+
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
@@ -87,6 +90,7 @@ func listGroups(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		listGroupResult := new(ListGroupResult)
 		_, err = client.Do(req, listGroupResult)
 		if err != nil {
+			logger.Error("listGroups", "Error", err)
 			return nil, err
 		}
 
@@ -104,6 +108,9 @@ func listGroups(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 //// HDRATE FUNCTIONS
 
 func getGroup(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getGroup")
+
 	groupId := d.KeyColumnQuals["id"].GetStringValue()
 
 	if groupId == "" {
@@ -118,6 +125,7 @@ func getGroup(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	apiEndpoint := fmt.Sprintf("/rest/api/3/group/bulk?groupId=%s", groupId)
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		logger.Error("getGroup", "Error", err)
 		return nil, err
 	}
 
@@ -133,6 +141,8 @@ func getGroup(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 }
 
 func getGroupMembers(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getGroupMembers")
 	group := h.Item.(Group)
 
 	client, err := connect(ctx, d)
@@ -155,6 +165,7 @@ func getGroupMembers(ctx context.Context, d *plugin.QueryData, h *plugin.Hydrate
 			if isNotFoundError(err) {
 				return groupMembers, nil
 			}
+			logger.Error("getGroupMembers", "Error", err)
 			return nil, err
 		}
 

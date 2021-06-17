@@ -87,6 +87,9 @@ func tableSprint(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listSprints")
+
 	board := h.Item.(jira.Board)
 
 	client, err := connect(ctx, d)
@@ -111,10 +114,11 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 
 		listResult := new(ListSprintResult)
 		_, err = client.Do(req, listResult)
-		if err != nil && isNotFoundError(err) {
+		if err != nil {
 			if isNotFoundError(err) {
 				return nil, nil
 			}
+			logger.Error("listSprints", "Error", err)
 			return nil, err
 		}
 
