@@ -15,8 +15,8 @@ import (
 
 func tableDashboard(_ context.Context) *plugin.Table {
 	return &plugin.Table{
-		Name:             "jira_dashboard",
-		Description:      "Your dashboard is the main display you see when you log in to Jira.",
+		Name:        "jira_dashboard",
+		Description: "Your dashboard is the main display you see when you log in to Jira.",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getDashboard,
@@ -97,6 +97,9 @@ func tableDashboard(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listDashboards")
+
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
@@ -113,12 +116,14 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
+			logger.Error("listDashboards", "Connection error", err)
 			return nil, err
 		}
 
 		listResult := new(ListResult)
 		_, err = client.Do(req, listResult)
 		if err != nil {
+			logger.Error("listDashboards", "Error", err)
 			return nil, err
 		}
 
@@ -136,6 +141,9 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 //// HDRATE FUNCTIONS
 
 func getDashboard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getDashboard")
+
 	dashboardId := d.KeyColumnQuals["id"].GetStringValue()
 
 	if dashboardId == "" {
@@ -154,12 +162,18 @@ func getDashboard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	}
 
 	_, err = client.Do(req, dashboard)
-	if err != nil && isNotFoundError(err) {
-		return nil, nil
+	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
+		logger.Error("getDashboard", "Error", err)
+		return nil, err
 	}
 
 	return dashboard, nil
 }
+
+//// Custom Structs
 
 type ListResult struct {
 	MaxResults int         `json:"maxResults"`

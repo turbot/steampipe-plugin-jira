@@ -16,8 +16,8 @@ import (
 
 func tableIssue(_ context.Context) *plugin.Table {
 	return &plugin.Table{
-		Name:             "jira_issue",
-		Description:      "Issues help manage code, estimate workload, and keep track of team.",
+		Name:        "jira_issue",
+		Description: "Issues help manage code, estimate workload, and keep track of team.",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getIssue,
@@ -205,6 +205,9 @@ func tableIssue(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listIssues")
+
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
@@ -226,6 +229,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 				return nil, nil
 			}
+			logger.Error("listIssues", "Error", err)
 			return nil, err
 		}
 
@@ -243,8 +247,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			"sprint": sprintKey,
 		}
 
-		plugin.Logger(ctx).Error("List", "Keys", keys)
-
 		for _, issue := range listIssuesResult.Issues {
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
 		}
@@ -259,6 +261,9 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 //// HYDRATE FUNCTION
 
 func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getIssue")
+
 	issueId := d.KeyColumnQuals["id"].GetStringValue()
 
 	client, err := connect(ctx, d)
@@ -269,8 +274,12 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	issue, _, err := client.Issue.Get(issueId, &jira.GetQueryOptions{
 		Expand: "names",
 	})
-	if err != nil && isNotFoundError(err) {
-		return nil, nil
+	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
+		logger.Error("getIssue", "Error", err)
+		return nil, err
 	}
 
 	epicKey := getFieldKey(ctx, d, issue.Names, "Epic Link")

@@ -79,17 +79,20 @@ func tableUser(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listUsers(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listUsers")
+
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
 	}
 
 	req, _ := client.NewRequest("GET", "rest/api/2/users", nil)
-
 	users := new([]jira.User)
 
 	rsp, err := client.Do(req, users)
 	if err != nil {
+		logger.Error("listUsers", "Error", err)
 		return nil, err
 	}
 
@@ -103,7 +106,9 @@ func listUsers(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 //// HYDRATE FUNCTIONS
 
 func getUserGroups(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	plugin.Logger(ctx).Trace("getAdUser")
+	logger := plugin.Logger(ctx)
+	logger.Trace("getUserGroups")
+
 	user := h.Item.(jira.User)
 
 	client, err := connect(ctx, d)
@@ -113,6 +118,7 @@ func getUserGroups(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateDa
 
 	groups, _, err := client.User.GetGroups(user.AccountID)
 	if err != nil {
+		logger.Error("getUserGroups", "Error", err)
 		return nil, err
 	}
 

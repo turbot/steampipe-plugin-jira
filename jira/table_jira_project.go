@@ -15,8 +15,8 @@ import (
 
 func tableProject(_ context.Context) *plugin.Table {
 	return &plugin.Table{
-		Name:             "jira_project",
-		Description:      "Project is a collection of issues (stories, bugs, tasks, etc).",
+		Name:        "jira_project",
+		Description: "Project is a collection of issues (stories, bugs, tasks, etc).",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getProject,
@@ -125,6 +125,9 @@ func tableProject(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("listProjects")
+
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
@@ -138,6 +141,7 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	projectList := new(ProjectList)
 	_, err = client.Do(req, projectList)
 	if err != nil {
+		logger.Error("listProjects", "Error", err)
 		return nil, err
 	}
 
@@ -151,6 +155,9 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 //// HYDRATE FUNCTION
 
 func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getProject")
+
 	var projectId string
 	if h.Item != nil {
 		projectId = h.Item.(Project).ID
@@ -175,8 +182,12 @@ func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 
 	project := new(Project)
 	_, err = client.Do(req, project)
-	if err != nil && isNotFoundError(err) {
-		return nil, nil
+	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
+		logger.Error("getUserGroups", "Error", err)
+		return nil, err
 	}
 
 	return project, err
@@ -192,7 +203,7 @@ func extractProjectComponentIds(_ context.Context, d *transform.TransformData) (
 	return componentIds, nil
 }
 
-//// Custom structs
+//// Custom Structs
 
 type ProjectList []Project
 
