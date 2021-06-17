@@ -73,5 +73,5 @@ select
 from
   jira_issue
 where
-  sprint_id = 2;
+  sprint_ids @> '2'
 ```

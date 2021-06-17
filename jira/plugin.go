@@ -24,11 +24,11 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			"jira_epic":         tableEpic(ctx),
 			"jira_group":        tableGroup(ctx),
 			"jira_issue":        tableIssue(ctx),
-			"jira_my_user":      tableMyUser(ctx),
 			"jira_project":      tableProject(ctx),
 			"jira_project_role": tableProjectRole(ctx),
 			"jira_sprint":       tableSprint(ctx),
 			"jira_user":         tableUser(ctx),
+			// "jira_my_user":      tableMyUser(ctx),
 		},
 	}
 

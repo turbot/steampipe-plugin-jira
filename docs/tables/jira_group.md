@@ -23,8 +23,12 @@ select
   user_id,
   u.email_address as user_email
 from
-  jira_group g,
-  jsonb_array_elements_text(member_ids) as user_id
-  join jira_user u on user_id = u.account_id
-order by name, user_name;
+  jira_group as g,
+  jsonb_array_elements_text(member_ids) as user_id,
+  jira_user as u
+where
+  user_id = u.account_id
+order by
+  group_name,
+  user_name;
 ```
