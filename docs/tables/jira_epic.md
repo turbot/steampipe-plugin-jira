@@ -1,6 +1,6 @@
 # Table: jira_epic
 
-An is essentially a large user story that can be broken down into a number of smaller stories. An epic can span more than one project, if multiple projects are included in the board where the epic is created.
+An **Epic** is essentially a large user story that can be broken down into a number of smaller stories. An epic can span more than one project.
 
 ## Examples
 

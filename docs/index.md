@@ -12,7 +12,8 @@ og_image: "/images/plugins/turbot/jira-social-graphic.png"
 
 # Jira + Steampipe
 
-[Jira](https://www.atlassian.com/software/jira) provides on-demand cloud computing platforms and APIs to authenticated customers on a metered pay-as-you-go basis.
+[Jira](https://www.atlassian.com/software/jira) provides on-demand cloud computing platforms and APIs to plan,
+track, and release great software.
 
 [Steampipe](https://steampipe.io) is an open source CLI to instantly query cloud APIs using SQL.
 

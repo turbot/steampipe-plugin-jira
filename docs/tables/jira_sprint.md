@@ -1,6 +1,6 @@
 # Table: jira_sprint
 
-A sprint — also known as an iteration — is a short period in which the development team implements and delivers a discrete and potentially shippable application increment, e.g. a working milestone version.
+A **Sprint** — also known as an iteration — is a short period in which the development team implements and delivers a discrete and potentially shippable application increment, e.g. a working milestone version.
 
 ## Examples
 
@@ -19,7 +19,7 @@ from
   jira_sprint;
 ```
 
-### List sprints due in next week
+### List sprints due in the next week
 
 ```sql
 select
@@ -32,8 +32,8 @@ select
 from
   jira_sprint
 where
-  end_date > (current_date + interval '7' day)
-  and end_date <= (current_date + interval '14' day);
+  end_date > current_date
+  and end_date <= (current_date + interval '7' day);
 ```
 
 ### List active sprints
@@ -66,5 +66,24 @@ select
 from
   jira_issue
 where
-  sprint_ids @> '2'
+  sprint_ids @> '2';
+```
+
+### Count of issues by sprint
+```sql
+select 
+  b.name as board_name,
+  s.name as sprint_name,
+  count(sprint_id) as num_issues
+from 
+  jira_board as b
+  join jira_sprint as s on s.board_id = b.id 
+  left join jira_issue as i on true 
+  left join jsonb_array_elements(i.sprint_ids) as sprint_id on sprint_id ::bigint = s.id  
+group by
+  board_name,
+  sprint_name
+order by
+  board_name,
+  sprint_name;
 ```

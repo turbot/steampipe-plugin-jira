@@ -1,5 +1,8 @@
 # Table: jira_user
 
+A **User** represents an entity that logs in to Jira.
+
+
 ## Examples
 
 ### Basic info

@@ -1,6 +1,6 @@
 # Table: jira_project_role
 
-Project roles are a flexible way to associate users and/or groups with particular projects. Project roles also allow for delegated administration:
+Project **Roles** are a flexible way to associate users and/or groups with particular projects. Project roles also allow for delegated administration:
 
 - Jira administrators define project roles — that is, all projects have the same project roles available to them.
 - Project administrators assign members to project roles specifically for their project(s).

@@ -1,6 +1,6 @@
 # Table: jira_project
 
-A project is simply a collection of issues (stories, bugs, tasks, etc). You would typically use a project to represent the development work for a product, project, or service in Jira Software.
+A **Project** is simply a collection of issues (stories, bugs, tasks, etc). You would typically use a project to represent the development work for a product, project, or service in Jira Software.
 
 ## Examples
 
