@@ -1,10 +1,24 @@
-# Table:
+# Table: jira_issue
 
 Issues are the building blocks of any Jira project. An issue could represent a story, a bug, a task, or another issue type in your project.
 
 ## Examples
 
-### List issues for a specific project(can use column project_key or project_id )
+### Basic info
+
+```sql
+select
+  key,
+  project_key,
+  created,
+  creator_display_name,
+  status,
+  summary
+from
+  jira_issue;
+```
+
+### List issues for a specific project
 
 ```sql
 select
@@ -39,7 +53,7 @@ where
   assignee_display_name = 'Lalit Bhardwaj';
 ```
 
-### Get issues due in next week
+### List issues due in next week
 
 ```sql
 select
@@ -58,7 +72,7 @@ where
   and duedate <= (current_date + interval '14' day);
 ```
 
-### Get issues for a sprint
+### Get issues belonging to a sprint
 
 ```sql
 select

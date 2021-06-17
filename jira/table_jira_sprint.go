@@ -50,14 +50,9 @@ func tableSprint(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 			},
 			{
-				Name:        "is_started",
-				Description: "True if sprint has started, and false if not.",
-				Type:        proto.ColumnType_BOOL,
-			},
-			{
-				Name:        "is_closed",
-				Description: "True if the sprint is closed, and false if not.",
-				Type:        proto.ColumnType_BOOL,
+				Name:        "state",
+				Description: "Status of the sprint.",
+				Type:        proto.ColumnType_STRING,
 			},
 			{
 				Name:        "start_date",
@@ -67,7 +62,7 @@ func tableSprint(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "end_date",
-				Description: "The end timestamp of the sprint.",
+				Description: "The projected time of completion of the sprint.",
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromCamel().NullIfZero(),
 			},
@@ -175,8 +170,6 @@ type Sprint struct {
 	Id            int64     `json:"id"`
 	Self          string    `json:"self"`
 	Name          string    `json:"name"`
-	IsStarted     bool      `json:"isStarted"`
-	IsClosed      bool      `json:"isClosed"`
 	State         string    `json:"state"`
 	EndDate       time.Time `json:"endDate"`
 	StartDate     time.Time `json:"startDate"`
