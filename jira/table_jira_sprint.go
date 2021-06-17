@@ -16,12 +16,13 @@ import (
 
 func tableSprint(_ context.Context) *plugin.Table {
 	return &plugin.Table{
-		Name:             "jira_sprint",
-		Description:      "Sprint is a short period in which the development team implements and delivers a discrete and potentially shippable application increment.",
-		Get: &plugin.GetConfig{
-			KeyColumns: plugin.SingleColumn("id"),
-			Hydrate:    getSprint,
-		},
+		Name:        "jira_sprint",
+		Description: "Sprint is a short period in which the development team implements and delivers a discrete and potentially shippable application increment.",
+		//  TODO - Not getting board id details for get call
+		// Get: &plugin.GetConfig{
+		// 	KeyColumns: plugin.SingleColumn("id"),
+		// 	Hydrate:    getSprint,
+		// },
 		List: &plugin.ListConfig{
 			ParentHydrate: listBoards,
 			Hydrate:       listSprints,
@@ -39,8 +40,9 @@ func tableSprint(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "board_id",
-				Description: "The unique identifier of board.",
+				Description: "The ID of the board the sprint belongs to.z",
 				Type:        proto.ColumnType_INT,
+				Transform:   transform.FromField("BoardId", "OriginBoardId"),
 			},
 			{
 				Name:        "self",
@@ -73,12 +75,6 @@ func tableSprint(_ context.Context) *plugin.Table {
 				Name:        "complete_date",
 				Description: "Date the sprint was marked as complete.",
 				Type:        proto.ColumnType_TIMESTAMP,
-				Transform:   transform.FromCamel().NullIfZero(),
-			},
-			{
-				Name:        "origin_board_id",
-				Description: "ID of the board the sprint belongs to.",
-				Type:        proto.ColumnType_INT,
 				Transform:   transform.FromCamel().NullIfZero(),
 			},
 
@@ -142,6 +138,10 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 
 func getSprint(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	sprintId := d.KeyColumnQuals["id"].GetInt64Value()
+
+	if sprintId == 0 {
+		return nil, nil
+	}
 
 	sprint := new(Sprint)
 	client, err := connect(ctx, d)
