@@ -17,7 +17,6 @@ func tableEpic(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_epic",
 		Description:      "An epic is essentially a large user story that can be broken down into a number of smaller stories. An epic can span more than one project.",
-		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.AnyColumn([]string{"id", "key"}),
 			Hydrate:    getEpic,

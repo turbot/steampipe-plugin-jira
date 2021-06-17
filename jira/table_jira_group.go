@@ -17,7 +17,6 @@ func tableGroup(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_group",
 		Description:      "Group is a collection of users. Administrators create groups so that the administrator can assign permissions to a number of people at once.",
-		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getGroup,

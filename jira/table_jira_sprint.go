@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/plugin/transform"
 
@@ -17,14 +18,13 @@ func tableSprint(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_sprint",
 		Description:      "Sprint is a short period in which the development team implements and delivers a discrete and potentially shippable application increment.",
-		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getSprint,
 		},
 		List: &plugin.ListConfig{
-			KeyColumns: plugin.SingleColumn("board_id"),
-			Hydrate:    listSprints,
+			ParentHydrate: listBoards,
+			Hydrate:       listSprints,
 		},
 		Columns: []*plugin.Column{
 			{
@@ -95,8 +95,8 @@ func tableSprint(_ context.Context) *plugin.Table {
 
 //// LIST FUNCTION
 
-func listSprints(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	boardId := d.KeyColumnQuals["board_id"].GetInt64Value()
+func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	board := h.Item.(jira.Board)
 
 	client, err := connect(ctx, d)
 	if err != nil {
@@ -108,7 +108,7 @@ func listSprints(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData
 	for {
 		apiEndpoint := fmt.Sprintf(
 			"/rest/agile/1.0/board/%d/sprint?startAt=%d&maxResults=%d",
-			boardId,
+			board.ID,
 			last,
 			maxResults,
 		)
@@ -128,7 +128,7 @@ func listSprints(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData
 		}
 
 		for _, sprint := range listResult.Values {
-			d.StreamListItem(ctx, SprintItemInfo{boardId, sprint})
+			d.StreamListItem(ctx, SprintItemInfo{int64(board.ID), sprint})
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
@@ -181,7 +181,7 @@ type Sprint struct {
 	EndDate       time.Time `json:"endDate"`
 	StartDate     time.Time `json:"startDate"`
 	CompleteDate  time.Time `json:"completeDate"`
-	OriginBoardId int64     `json:"originBoardId"`
+	OriginBoardId int       `json:"originBoardId"`
 }
 
 type SprintItemInfo struct {

@@ -18,7 +18,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_issue",
 		Description:      "Issues help manage code, estimate workload, and keep track of team.",
-		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getIssue,

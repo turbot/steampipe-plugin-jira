@@ -16,7 +16,6 @@ func tableBoard(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_board",
 		Description:      "A board displays issues from one or more projects, giving you a flexible way of viewing, managing, and reporting on work in progress.",
-		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getBoard,
@@ -142,5 +141,3 @@ func getBoardConfiguration(ctx context.Context, d *plugin.QueryData, h *plugin.H
 
 	return boardConfiguration, err
 }
-
-// https://support.atlassian.com/jira-software-cloud/docs/what-is-a-jira-software-board/

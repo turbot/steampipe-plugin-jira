@@ -16,7 +16,6 @@ func tableMyUser(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_my_user",
 		Description:      "Details of the your own jira user.",
-		DefaultTransform: transform.FromCamel(),
 		List: &plugin.ListConfig{
 			Hydrate: getMyUser,
 		},

@@ -17,7 +17,6 @@ func tableDashboard(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_dashboard",
 		Description:      "Your dashboard is the main display you see when you log in to Jira.",
-		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getDashboard,

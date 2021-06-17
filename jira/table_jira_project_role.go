@@ -16,7 +16,6 @@ func tableProjectRole(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:             "jira_project_role",
 		Description:      "Roles are a flexible way to associate users and/or groups with particular projects.",
-		DefaultTransform: transform.FromCamel(),
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.SingleColumn("id"),
 			Hydrate:    getProjectRole,
