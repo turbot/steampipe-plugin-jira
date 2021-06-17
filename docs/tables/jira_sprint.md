@@ -14,7 +14,7 @@ select
   state,
   start_date,
   end_date,
-  complete_date,
+  complete_date
 from
   jira_sprint;
 ```
