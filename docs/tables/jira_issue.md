@@ -1,6 +1,6 @@
 # Table: jira_issue
 
-Issues are the building blocks of any Jira project. An issue could represent a story, a bug, a task, or another issue type in your project.
+**Issues** are the building blocks of any Jira project. An issue could represent a story, a bug, a task, or another issue type in your project.
 
 ## Examples
 
@@ -36,7 +36,7 @@ where
   project_key = 'TEST';
 ```
 
-### List all issues assignment to specific user
+### List all issues assigned to a specific user
 
 ```sql
 select
@@ -53,8 +53,7 @@ where
   assignee_display_name = 'Lalit Bhardwaj';
 ```
 
-### List issues due in next week
-
+### List issues due in the next week
 ```sql
 select
   id,
@@ -68,9 +67,11 @@ select
 from
   jira_issue
 where
-  duedate > (current_date + interval '7' day)
-  and duedate <= (current_date + interval '14' day);
+  duedate > current_date
+  and duedate <= (current_date + interval '7' day);
 ```
+
+
 
 ### Get issues belonging to a sprint
 

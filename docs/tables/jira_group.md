@@ -1,6 +1,6 @@
 # Table: jira_group
 
-Group is a collection of users. Administrators create groups so that the administrator can assign permissions to a number of people at once.
+A **Group** is a collection of users. Administrators create groups so that the administrator can assign permissions to a number of people at once.
 
 ## Examples
 

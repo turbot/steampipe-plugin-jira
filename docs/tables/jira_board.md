@@ -1,6 +1,6 @@
 # Table: jira_board
 
-A board displays issues from one or more projects, giving you a flexible way of viewing, managing, and reporting on work in progress.
+A **Board** displays issues from one or more projects, giving you a flexible way of viewing, managing, and reporting on work in progress.
 There are three types of boards in Jira Software:
 
 - Team-managed board: For teams who are new to agile. Get your team up-and-running with this simplified board. The set-up is straight-forward and streamlined, delivering more power progressively as you need it.

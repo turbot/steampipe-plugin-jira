@@ -1,6 +1,6 @@
 # Table: jira_dashboard
 
-Dashboard is the main display you see when you log in to Jira. You can create
+A **Dashboard** is the main display you see when you log in to Jira. You can create
 multiple dashboards from different projects, or multiple dashboards for one
 massive overview of all the work you're involved with.
 
