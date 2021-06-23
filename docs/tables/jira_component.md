@@ -38,9 +38,9 @@ select
   name,
   project,
   issue_count,
-  lead
+  lead_display_name
 from
   jira_component
 where
-  lead = '{"avatarUrls":{}}';
+  lead_display_name = '';
 ```

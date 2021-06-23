@@ -52,6 +52,18 @@ func tableComponent(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 			},
 			{
+				Name:        "assignee_account_id",
+				Description: "The account id of the user associated with assigneeType, if any.",
+				Type:        proto.ColumnType_STRING,
+				Transform: transform.FromField("Assignee.AccountID"),
+			},
+			{
+				Name:        "assignee_display_name",
+				Description: "The display name of the user associated with assigneeType, if any.",
+				Type:        proto.ColumnType_STRING,
+				Transform: transform.FromField("Assignee.DisplayName"),
+			},
+			{
 				Name:        "assignee_type",
 				Description: "The nominal user type used to determine the assignee for issues created with this component.",
 				Type:        proto.ColumnType_STRING,
@@ -67,29 +79,38 @@ func tableComponent(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_INT,
 			},
 			{
+				Name:        "lead_account_id",
+				Description: "The account id for the component's lead user.",
+				Type:        proto.ColumnType_STRING,
+				Transform: transform.FromField("Lead.AccountID"),
+			},
+			{
+				Name:        "lead_display_name",
+				Description: "The display name for the component's lead user.",
+				Type:        proto.ColumnType_STRING,
+				Transform: transform.FromField("Lead.DisplayName"),
+			},
+			{
 				Name:        "project_id",
 				Description: "The ID of the project the component belongs to.",
 				Type:        proto.ColumnType_INT,
 			},
 			{
+				Name:        "real_assignee_account_id",
+				Description: "The account id of the user assigned to issues created with this component, when assigneeType does not identify a valid assignee.",
+				Type:        proto.ColumnType_STRING,
+				Transform: transform.FromField("RealAssignee.AccountID"),
+			},
+			{
+				Name:        "real_assignee_display_name",
+				Description: "The display name of the user assigned to issues created with this component, when assigneeType does not identify a valid assignee.",
+				Type:        proto.ColumnType_STRING,
+				Transform: transform.FromField("RealAssignee.DisplayName"),
+			},
+			{
 				Name:        "real_assignee_type",
 				Description: "The type of the assignee that is assigned to issues created with this component, when an assignee cannot be set from the assigneeType.",
 				Type:        proto.ColumnType_STRING,
-			},
-			{
-				Name:        "assignee",
-				Description: "The details of the user associated with assigneeType, if any.",
-				Type:        proto.ColumnType_JSON,
-			},
-			{
-				Name:        "lead",
-				Description: "The user details for the component's lead user.",
-				Type:        proto.ColumnType_JSON,
-			},
-			{
-				Name:        "real_assignee",
-				Description: "The user assigned to issues created with this component, when assigneeType does not identify a valid assignee.",
-				Type:        proto.ColumnType_JSON,
 			},
 
 			// Standard columns
