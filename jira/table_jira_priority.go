@@ -106,6 +106,11 @@ func getPriority(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	}
 	priorityId := d.KeyColumnQuals["id"].GetStringValue()
 
+	// Return nil, if no input provided
+	if priorityId == "" {
+		return nil, nil
+	}
+
 	apiEndpoint := fmt.Sprintf("/rest/api/3/priority/%s", priorityId)
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
