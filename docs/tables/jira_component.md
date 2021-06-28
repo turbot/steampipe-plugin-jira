@@ -1,6 +1,6 @@
 # Table: jira_component
 
-Jira project components are generic containers for issues. Components can have Component Leads: people who are automatically assigned issues with that component. Components add some structure to projects, breaking it up into features, teams, modules, subprojects, and more. Using components, you can generate reports, collect statistics, display it on dashboards, etc.
+Jira project components are generic containers for issues. Components add some structure to projects, breaking it into features, teams, modules, subprojects, and more. Using components, you can generate reports, collect statistics, display it on dashboards, etc.
 
 ## Examples
 

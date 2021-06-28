@@ -26,6 +26,7 @@ func tableComponent(_ context.Context) *plugin.Table {
 			Hydrate:       listComponents,
 		},
 		Columns: []*plugin.Column{
+			// top fields
 			{
 				Name:        "id",
 				Description: "The unique identifier for the component.",
@@ -51,17 +52,19 @@ func tableComponent(_ context.Context) *plugin.Table {
 				Description: "The key of the project to which the component is assigned.",
 				Type:        proto.ColumnType_STRING,
 			},
+
+			// other important fields
 			{
 				Name:        "assignee_account_id",
 				Description: "The account id of the user associated with assigneeType, if any.",
 				Type:        proto.ColumnType_STRING,
-				Transform: transform.FromField("Assignee.AccountID"),
+				Transform:   transform.FromField("Assignee.AccountID"),
 			},
 			{
 				Name:        "assignee_display_name",
 				Description: "The display name of the user associated with assigneeType, if any.",
 				Type:        proto.ColumnType_STRING,
-				Transform: transform.FromField("Assignee.DisplayName"),
+				Transform:   transform.FromField("Assignee.DisplayName"),
 			},
 			{
 				Name:        "assignee_type",
@@ -82,13 +85,13 @@ func tableComponent(_ context.Context) *plugin.Table {
 				Name:        "lead_account_id",
 				Description: "The account id for the component's lead user.",
 				Type:        proto.ColumnType_STRING,
-				Transform: transform.FromField("Lead.AccountID"),
+				Transform:   transform.FromField("Lead.AccountID"),
 			},
 			{
 				Name:        "lead_display_name",
 				Description: "The display name for the component's lead user.",
 				Type:        proto.ColumnType_STRING,
-				Transform: transform.FromField("Lead.DisplayName"),
+				Transform:   transform.FromField("Lead.DisplayName"),
 			},
 			{
 				Name:        "project_id",
@@ -99,13 +102,13 @@ func tableComponent(_ context.Context) *plugin.Table {
 				Name:        "real_assignee_account_id",
 				Description: "The account id of the user assigned to issues created with this component, when assigneeType does not identify a valid assignee.",
 				Type:        proto.ColumnType_STRING,
-				Transform: transform.FromField("RealAssignee.AccountID"),
+				Transform:   transform.FromField("RealAssignee.AccountID"),
 			},
 			{
 				Name:        "real_assignee_display_name",
 				Description: "The display name of the user assigned to issues created with this component, when assigneeType does not identify a valid assignee.",
 				Type:        proto.ColumnType_STRING,
-				Transform: transform.FromField("RealAssignee.DisplayName"),
+				Transform:   transform.FromField("RealAssignee.DisplayName"),
 			},
 			{
 				Name:        "real_assignee_type",
@@ -173,7 +176,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	logger := plugin.Logger(ctx)
 	logger.Trace("getComponent")
-	componentId := d.KeyColumnQuals["id"]
+	componentId := d.KeyColumnQuals["id"].GetStringValue()
 
 	client, err := connect(ctx, d)
 	if err != nil {
@@ -181,7 +184,7 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	}
 
 	apiEndpoint := fmt.Sprintf(
-		"rest/api/3/component/%s",
+		"/rest/api/3/component/%s",
 		componentId,
 	)
 
@@ -190,7 +193,7 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 		return nil, err
 	}
 
-	result := new(jira.Component)
+	result := new(Component)
 
 	_, err = client.Do(req, result)
 	if err != nil {
