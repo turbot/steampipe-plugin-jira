@@ -18,7 +18,7 @@ from
   jira_backlog_issue;
 ```
 
-### List issues for a specific project
+### List backlog issues for a specific project
 
 ```sql
 select
@@ -36,7 +36,7 @@ where
   project_key = 'TEST1';
 ```
 
-### List all issues assigned to a specific user
+### List backlog issues assigned to a specific user
 
 ```sql
 select
@@ -53,7 +53,7 @@ where
   assignee_display_name = 'sayan';
 ```
 
-### List issues due in the 30 days
+### List backlog issues due in the 30 days
 ```sql
 select
   id,

@@ -66,15 +66,9 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "status",
-				Description: "Json object containing important subfields info the issue.",
+				Description: "The status of the issue. Eg: To Do, In Progress, Done.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Status.Name"),
-			},
-			{
-				Name:        "epic_key",
-				Description: "The key of the epic to which issue belongs.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromP(extractBacklogIssueRequiredField, "epic"),
 			},
 
 			// other important fields
@@ -91,6 +85,12 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Assignee.DisplayName"),
 			},
 			{
+				Name:        "created",
+				Description: "Time when the issue was created.",
+				Type:        proto.ColumnType_TIMESTAMP,
+				Transform:   transform.FromField("Fields.Created").Transform(convertJiraTime),
+			},
+			{
 				Name:        "creator_account_id",
 				Description: "Account Id of the user/application that created the issue.",
 				Type:        proto.ColumnType_STRING,
@@ -103,10 +103,10 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Creator.DisplayName"),
 			},
 			{
-				Name:        "created",
-				Description: "Time when the issue was created.",
-				Type:        proto.ColumnType_TIMESTAMP,
-				Transform:   transform.FromField("Fields.Created").Transform(convertJiraTime),
+				Name:        "description",
+				Description: "Description of the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Description"),
 			},
 			{
 				Name:        "duedate",
@@ -115,22 +115,10 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Duedate").NullIfZero().Transform(convertJiraDate),
 			},
 			{
-				Name:        "description",
-				Description: "Description of the issue.",
+				Name:        "epic_key",
+				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Description"),
-			},
-			{
-				Name:        "type",
-				Description: "The name of the issue type.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Type.Name"),
-			},
-			{
-				Name:        "labels",
-				Description: "A list of labels applied to the issue.",
-				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromField("Fields.Labels"),
+				Transform:   transform.FromP(extractBacklogIssueRequiredField, "epic"),
 			},
 			{
 				Name:        "priority",
@@ -163,6 +151,12 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Summary"),
 			},
 			{
+				Name:        "type",
+				Description: "The name of the issue type.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Type.Name"),
+			},
+			{
 				Name:        "updated",
 				Description: "Time when the issue was last updated.",
 				Type:        proto.ColumnType_TIMESTAMP,
@@ -182,13 +176,19 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_JSON,
 			},
 			{
+				Name:        "labels",
+				Description: "A list of labels applied to the issue.",
+				Type:        proto.ColumnType_JSON,
+				Transform:   transform.FromField("Fields.Labels"),
+			},
+
+			// Standard columns
+			{
 				Name:        "tags",
 				Type:        proto.ColumnType_JSON,
 				Description: "A map of label names associated with this issue, in Steampipe standard format.",
 				Transform:   transform.From(getBacklogIssueTags),
 			},
-
-			// Standard columns
 			{
 				Name:        "title",
 				Description: ColumnDescriptionTitle,
@@ -217,11 +217,9 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 	var epicKey string
 	for {
 
-		var BoardId = board.ID
-		var BoardName = board.Name
 		apiEndpoint := fmt.Sprintf(
 			"/rest/agile/1.0/board/%d/backlog?startAt=%d&maxResults=%d&expand=names",
-			BoardId,
+			board.ID,
 			last,
 			maxResults,
 		)
@@ -248,7 +246,7 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		}
 
 		for _, issue := range listIssuesResult.Issues {
-			d.StreamListItem(ctx, BacklogIssueInfo{issue, BoardId, BoardName, keys})
+			d.StreamListItem(ctx, BacklogIssueInfo{issue, board.ID, board.Name, keys})
 		}
 
 		last = listIssuesResult.StartAt + len(listIssuesResult.Issues)
