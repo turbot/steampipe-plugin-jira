@@ -11,7 +11,7 @@ select
   id,
   name,
   description,
-  avatar_id,
+  avatar_id
 from
   jira_issue_type;
 ```
