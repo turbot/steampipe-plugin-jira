@@ -133,35 +133,6 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	}
 }
 
-//// HDRATE FUNCTIONS
-
-func getSprint(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	sprintId := d.KeyColumnQuals["id"].GetInt64Value()
-
-	if sprintId == 0 {
-		return nil, nil
-	}
-
-	sprint := new(Sprint)
-	client, err := connect(ctx, d)
-	if err != nil {
-		return nil, err
-	}
-
-	apiEndpoint := fmt.Sprintf("/rest/agile/1.0/sprint/%d", sprintId)
-	req, err := client.NewRequest("GET", apiEndpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = client.Do(req, sprint)
-	if err != nil && isNotFoundError(err) {
-		return nil, nil
-	}
-
-	return sprint, err
-}
-
 type ListSprintResult struct {
 	MaxResults int      `json:"maxResults"`
 	StartAt    int      `json:"startAt"`
