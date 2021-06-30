@@ -20,6 +20,7 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 		},
 		TableMap: map[string]*plugin.Table{
 			"jira_board":        tableBoard(ctx),
+			"jira_component":    tableComponent(ctx),
 			"jira_dashboard":    tableDashboard(ctx),
 			"jira_epic":         tableEpic(ctx),
 			"jira_group":        tableGroup(ctx),
