@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/turbot/steampipe-plugin-sdk/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/plugin/transform"
@@ -15,6 +16,10 @@ func tableAdvancedSetting(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:        "jira_advanced_setting",
 		Description: "The application properties that are accessible on the Advanced Settings page.",
+		Get: &plugin.GetConfig{
+			KeyColumns: plugin.SingleColumn("id"),
+			Hydrate:    getAdvancedSettingProperty,
+		},
 		List: &plugin.ListConfig{
 			Hydrate: listAdvancedSettings,
 		},
@@ -103,6 +108,45 @@ func listAdvancedSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.Hy
 		d.StreamListItem(ctx, listAdvancedSettings)
 	}
 	return nil, err
+}
+
+//// HYDRATE FUNCTIONS
+
+func getAdvancedSettingProperty(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getAdvancedSettingProperty")
+	ID := d.KeyColumnQuals["id"].GetStringValue()
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+
+	apiEndpoint := fmt.Sprintf(
+		"/rest/api/3/application-properties?key=%s",
+		ID,
+	)
+
+	req, err := client.NewRequest("GET", apiEndpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	result := new(AdvancedApplicationProperty)
+
+	_, err = client.Do(req, result)
+	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
+		if isBadRequestError(err) {
+			return nil, nil
+		}
+		plugin.Logger(ctx).Error("getAdvancedSettingProperty", "Error", err)
+		return nil, err
+	}
+
+	return result, nil
 }
 
 type AdvancedApplicationProperty struct {
