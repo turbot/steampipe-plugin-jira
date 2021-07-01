@@ -53,7 +53,7 @@ where
   assignee_display_name = 'sayan';
 ```
 
-### List backlog issues due in the 30 days
+### List backlog issues due in 30 days
 ```sql
 select
   id,
@@ -63,10 +63,10 @@ select
   status,
   assignee_display_name,
   assignee_account_id,
-  duedate
+  due_date
 from
   jira_backlog_issue
 where
-  duedate > current_date
-  and duedate <= (current_date + interval '30' day);
+  due_date > current_date
+  and due_date <= (current_date + interval '30' day);
 ```

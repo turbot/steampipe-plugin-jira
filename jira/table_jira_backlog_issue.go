@@ -109,7 +109,7 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("Fields.Description"),
 			},
 			{
-				Name:        "duedate",
+				Name:        "due_date",
 				Description: "Time by which the issue is expected to be completed.",
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromField("Fields.Duedate").NullIfZero().Transform(convertJiraDate),
