@@ -20,7 +20,7 @@ track, and release great software.
 For example:
 
 ```sql
-> select
+select
   display_name,
   account_type as type,
   active as status,
