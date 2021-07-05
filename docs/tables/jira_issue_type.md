@@ -32,6 +32,7 @@ where
 ```
 
 ### List issue types associated with subtask creation
+
 ```sql
 select
   id,
