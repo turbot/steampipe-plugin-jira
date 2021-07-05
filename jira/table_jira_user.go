@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/grpc/proto"
@@ -52,6 +53,8 @@ func tableUser(_ context.Context) *plugin.Table {
 				Description: "The URL of the user.",
 				Type:        proto.ColumnType_STRING,
 			},
+
+			// JSON fields
 			{
 				Name:        "avatar_urls",
 				Description: "The avatars of the user.",
@@ -63,6 +66,13 @@ func tableUser(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_JSON,
 				Hydrate:     getUserGroups,
 				Transform:   transform.From(groupNames),
+			},
+			{
+				Name:        "user_properties",
+				Description: "The properties that the user have.",
+				Type:        proto.ColumnType_JSON,
+				Hydrate:     getUserPropertyKeys,
+				Transform:   transform.From(getUserPropertiesMap),
 			},
 
 			// Standard columns
@@ -125,6 +135,38 @@ func getUserGroups(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateDa
 	return groups, nil
 }
 
+func getUserPropertyKeys(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	logger := plugin.Logger(ctx)
+	logger.Trace("getUserPropertyKeys")
+
+	user := h.Item.(jira.User)
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+
+	apiEndpoint := fmt.Sprintf(
+		"/rest/api/3/user/properties?accountId=%s",
+		user.AccountID,
+	)
+
+	req, err := client.NewRequest("GET", apiEndpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	userProperties := new(PropertyKeys)
+
+	_, err = client.Do(req, userProperties)
+	if err != nil {
+		plugin.Logger(ctx).Error("getUserPropertyKeys", "Error", err)
+		return nil, err
+	}
+	logger.Trace("getUserPropertyKeys", "User Properties", userProperties)
+	return userProperties, nil
+}
+
 //// TRANSFORM FUNCTION
 
 func groupNames(_ context.Context, d *transform.TransformData) (interface{}, error) {
@@ -134,4 +176,26 @@ func groupNames(_ context.Context, d *transform.TransformData) (interface{}, err
 		groupNames = append(groupNames, group.Name)
 	}
 	return groupNames, nil
+}
+
+func getUserPropertiesMap(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	keys := d.HydrateItem.(*PropertyKeys).Keys
+	userPropertiesMap := make(map[string]string)
+	if keys != nil {
+		for _, i := range keys {
+			userPropertiesMap[i.Key] = i.Self
+		}
+	}
+	return userPropertiesMap, nil
+}
+
+//// Custom Structs
+
+type PropertyKeys struct {
+	Keys []key `json:"keys"`
+}
+
+type key struct {
+	Self string `json:"self"`
+	Key  string `json:"key"`
 }
