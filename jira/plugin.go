@@ -30,6 +30,7 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			"jira_project_role": tableProjectRole(ctx),
 			"jira_sprint":       tableSprint(ctx),
 			"jira_user":         tableUser(ctx),
+			"jira_workflow":     tableWorkflow(ctx),
 		},
 	}
 
