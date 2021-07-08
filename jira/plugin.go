@@ -19,6 +19,7 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			Schema:      ConfigSchema,
 		},
 		TableMap: map[string]*plugin.Table{
+			"jira_backlog_issue":    tableBacklogIssue(ctx),
 			"jira_advanced_setting": tableAdvancedSetting(ctx),
 			"jira_board":            tableBoard(ctx),
 			"jira_component":        tableComponent(ctx),
