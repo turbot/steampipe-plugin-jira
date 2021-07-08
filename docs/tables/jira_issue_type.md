@@ -1,6 +1,6 @@
 # Table: jira_issue_type
 
-**Issue types** distinguish different types of work in unique ways, and helps to identify, categorize, and report on the team’s work across the Jira site.
+Issue types distinguish different types of work in unique ways, and helps to identify, categorize, and report on the team’s work across the Jira site.
 
 ## Examples
 
@@ -31,7 +31,7 @@ where
   scope -> 'project' ->> 'id' = '10000';
 ```
 
-### List issue types associated with subtask creation
+### List issue types associated with sub-task creation
 
 ```sql
 select
@@ -46,7 +46,7 @@ where
   subtask;
 ```
 
-### List issue types with hierarchy_level 0 (Base)
+### List issue types with hierarchy level 0 (Base)
 
 ```sql
 select
