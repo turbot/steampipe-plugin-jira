@@ -1,6 +1,6 @@
 # Table: jira_backlog_issue
 
-**Issues** are the building blocks of any Jira project. The backlog contains incomplete issues that are not assigned to any future or active sprint.
+Issues are the building blocks of any Jira project. The backlog contains incomplete issues that are not assigned to any future or active sprint.
 
 ## Examples
 
@@ -54,6 +54,7 @@ where
 ```
 
 ### List backlog issues due in 30 days
+
 ```sql
 select
   id,
