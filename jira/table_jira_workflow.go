@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/plugin/transform"
@@ -119,7 +120,7 @@ func getWorkflow(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	logger := plugin.Logger(ctx)
 	logger.Trace("getWorkflow")
 
-	workflowName := d.KeyColumnQuals["name"].GetStringValue()
+	workflowName := strings.Replace(d.KeyColumnQuals["name"].GetStringValue(), " ", "%20", -1)
 
 	client, err := connect(ctx, d)
 	if err != nil {
@@ -143,7 +144,7 @@ func getWorkflow(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 		logger.Error("listWorkflows", "Error", err)
 		return nil, err
 	}
-	if len(workflow.Values) < 1  {
+	if len(workflow.Values) < 1 {
 		return nil, nil
 	}
 	logger.Trace("getWorkflow", "Output", workflow)
