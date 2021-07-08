@@ -27,6 +27,7 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			"jira_epic":             tableEpic(ctx),
 			"jira_group":            tableGroup(ctx),
 			"jira_issue":            tableIssue(ctx),
+			"jira_issue_type":       tableIssueType(ctx),
 			"jira_priority":         tablePriority(ctx),
 			"jira_project":          tableProject(ctx),
 			"jira_project_role":     tableProjectRole(ctx),
