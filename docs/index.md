@@ -1,6 +1,6 @@
 ---
 organization: Turbot
-category: ["public cloud"]
+category: ["software development"]
 icon_url: "/images/plugins/turbot/jira.svg"
 brand_color: "#2684FF"
 display_name: "Jira"
@@ -20,7 +20,7 @@ track, and release great software.
 For example:
 
 ```sql
-> select
+select
   display_name,
   account_type as type,
   active as status,
