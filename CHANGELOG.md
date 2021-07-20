@@ -1,3 +1,22 @@
+## v0.0.2 [2021-07-08]
+
+_What's new?_
+
+- New tables added
+  - [jira_advanced_setting](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_advanced_setting) ([#18](https://github.com/turbot/steampipe-plugin-jira/pull/18))
+  - [jira_backlog_issue](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_backlog_issue) ([#16](https://github.com/turbot/steampipe-plugin-jira/pull/16))
+  - [jira_component](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_component) ([#15](https://github.com/turbot/steampipe-plugin-jira/pull/15))
+  - [jira_issue_type](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_issue_type) ([#17](https://github.com/turbot/steampipe-plugin-jira/pull/17))
+  - [jira_priority](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_priority) ([#14](https://github.com/turbot/steampipe-plugin-jira/pull/14))
+
+_Enhancements_
+
+- Updated: Plugin category is now `software development`
+
+_Bug fixes_
+
+- Fixed: Cleanup unused code ([#21](https://github.com/turbot/steampipe-plugin-jira/pull/21))
+
 ## v0.0.1 [2021-06-17]
 
 _What's new?_
