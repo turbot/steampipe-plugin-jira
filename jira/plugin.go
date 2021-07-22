@@ -23,6 +23,7 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			"jira_backlog_issue":    tableBacklogIssue(ctx),
 			"jira_board":            tableBoard(ctx),
 			"jira_component":        tableComponent(ctx),
+			"jira_confluence_space": tableConfluenceSpace(ctx),
 			"jira_dashboard":        tableDashboard(ctx),
 			"jira_epic":             tableEpic(ctx),
 			"jira_global_setting":   tableGlobalSetting(ctx),
