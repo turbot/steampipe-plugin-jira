@@ -194,7 +194,7 @@ func getSpace(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, err
 	}
 
-	return spacesResult, err
+	return *spacesResult, err
 }
 
 //// TRANSFORM FUNCTION
