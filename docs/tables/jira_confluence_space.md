@@ -12,7 +12,8 @@ select
   key,
   name,
   status,
-  type
+  type,
+  title
 from
   jira_confluence_space;
 ```
@@ -48,7 +49,7 @@ where
   description = '';
 ```
 
-### List spaces belongs to global type
+### List spaces belong to global type
 
 ```sql
 select
@@ -63,7 +64,7 @@ where
   type = 'global';
 ```
 
-### List spaces belongs to knowledge-bases category
+### List spaces belong to knowledge-bases category
 
 ```sql
 select
