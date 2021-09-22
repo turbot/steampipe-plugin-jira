@@ -1,3 +1,15 @@
+## v0.0.3 [2021-09-22]
+
+_What's new?_
+
+- New tables added
+  - [jira_global_setting](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_global_setting) ([#23](https://github.com/turbot/steampipe-plugin-jira/pull/23))
+  - [jira_workflow](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_workflow) ([#30](https://github.com/turbot/steampipe-plugin-jira/pull/30))
+
+_Enhancements_
+
+- Recompiled plugin with [steampipe-plugin-sdk v1.6.1](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v161--2021-09-21) ([#40](https://github.com/turbot/steampipe-plugin-jira/pull/40))
+
 ## v0.0.2 [2021-07-08]
 
 _What's new?_
