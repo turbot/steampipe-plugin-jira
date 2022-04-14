@@ -3,7 +3,6 @@ package jira
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -109,7 +108,6 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 							filters = append(filters, fmt.Sprintf("%s != \"%s\"", getIssueJQLKey(filterQualItem.Name), value.GetStringValue()))
 						}
 					case proto.ColumnType_TIMESTAMP:
-						log.Printf("[WARN] getIssueJQLKey  %s %s %s %s", "Col Type", "proto.ColumnType_TIMESTAMP", qual.Operator, value.GetTimestampValue().AsTime().Format("2006-01-02 15:04"))
 						switch qual.Operator {
 						case "=", ">=", ">", "<=", "<":
 							filters = append(filters, fmt.Sprintf("\"%s\" %s \"%s\"", getIssueJQLKey(filterQualItem.Name), qual.Operator, value.GetTimestampValue().AsTime().Format("2006-01-02 15:04")))
