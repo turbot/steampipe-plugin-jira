@@ -1,3 +1,10 @@
+## v0.1.1 [WIP]
+
+_Enhancements_
+
+- Added optional quals for table jira_issue([#47](https://github.com/turbot/steampipe-plugin-jira/pull/47))
+- Recompile plugin with [steampipe-plugin-sdk v3.1.0](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v310--2022-03-30) ([#47](https://github.com/turbot/steampipe-plugin-jira/pull/47))
+
 ## v0.1.0 [2021-11-23]
 
 _Enhancements_

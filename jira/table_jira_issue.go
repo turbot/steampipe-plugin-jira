@@ -2,14 +2,13 @@ package jira
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/turbot/steampipe-plugin-sdk/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/plugin/transform"
+	"github.com/turbot/steampipe-plugin-sdk/v3/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v3/plugin/transform"
 
-	"github.com/turbot/steampipe-plugin-sdk/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v3/plugin"
 )
 
 //// TABLE DEFINITION
@@ -19,11 +18,30 @@ func tableIssue(_ context.Context) *plugin.Table {
 		Name:        "jira_issue",
 		Description: "Issues help manage code, estimate workload, and keep track of team.",
 		Get: &plugin.GetConfig{
-			KeyColumns: plugin.SingleColumn("id"),
+			KeyColumns: plugin.AnyColumn([]string{"id", "key"}),
 			Hydrate:    getIssue,
 		},
 		List: &plugin.ListConfig{
 			Hydrate: listIssues,
+			// https://support.atlassian.com/jira-service-management-cloud/docs/advanced-search-reference-jql-fields/
+			KeyColumns: plugin.KeyColumnSlice{
+				{Name: "assignee_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "assignee_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "created", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
+				{Name: "creator_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "creator_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "duedate", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
+				{Name: "epic_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "priority", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "project_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "project_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "project_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "reporter_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "reporter_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "updated", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
+			},
 		},
 		Columns: []*plugin.Column{
 			// top fields
@@ -214,17 +232,30 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	}
 
 	last := 0
-	maxResults := 1000
-	var epicKey, sprintKey string
+
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var limit int = 50
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 50 {
+			limit = int(*queryLimit)
+		}
+	}
+	options := jira.SearchOptions{
+		StartAt:    0,
+		MaxResults: limit,
+		Expand:     "names",
+	}
+
+	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
+	logger.Debug("listIssues", "JQL", jql)
+
+	count := 0
 	for {
+		count++
+		issues, resp, err := client.Issue.SearchWithContext(ctx, jql, &options)
 
-		apiEndpoint := fmt.Sprintf(
-			"/rest/api/2/search?startAt=%d&maxResults=%d&expand=names",
-			last,
-			maxResults,
-		)
-
-		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
 			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 				return nil, nil
@@ -233,27 +264,23 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			return nil, err
 		}
 
-		listIssuesResult := new(ListIssuesResult)
-		_, err = client.Do(req, listIssuesResult)
-		if err != nil {
-			return nil, err
-		}
-
-		epicKey = getFieldKey(ctx, d, listIssuesResult.Names, "Epic Link")
-		sprintKey = getFieldKey(ctx, d, listIssuesResult.Names, "Sprint")
-
-		keys := map[string]string{
-			"epic":   epicKey,
-			"sprint": sprintKey,
-		}
-
-		for _, issue := range listIssuesResult.Issues {
+		for _, issue := range issues {
+			keys := map[string]string{
+				"epic":   getFieldKey(ctx, d, issue.Names, "Epic Link"),
+				"sprint": getFieldKey(ctx, d, issue.Names, "Sprint"),
+			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
-		last = listIssuesResult.StartAt + len(listIssuesResult.Issues)
-		if last >= listIssuesResult.Total {
+		last = resp.StartAt + len(issues)
+		if last >= resp.Total {
 			return nil, nil
+		} else {
+			options.StartAt = last
 		}
 	}
 }
@@ -265,13 +292,23 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	logger.Trace("getIssue")
 
 	issueId := d.KeyColumnQuals["id"].GetStringValue()
+	key := d.KeyColumnQuals["key"].GetStringValue()
 
 	client, err := connect(ctx, d)
 	if err != nil {
 		return nil, err
 	}
 
-	issue, _, err := client.Issue.Get(issueId, &jira.GetQueryOptions{
+	var id string
+	if issueId != "" {
+		id = issueId
+	} else if key != "" {
+		id = key
+	} else {
+		return nil, nil
+	}
+
+	issue, _, err := client.Issue.Get(id, &jira.GetQueryOptions{
 		Expand: "names",
 	})
 	if err != nil {
