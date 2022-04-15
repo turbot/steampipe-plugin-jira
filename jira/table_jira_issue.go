@@ -263,7 +263,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			logger.Error("listIssues", "Error", err)
 			return nil, err
 		}
-		logger.Info("listIssues", "COUNT", count)
 
 		for _, issue := range issues {
 			keys := map[string]string{
