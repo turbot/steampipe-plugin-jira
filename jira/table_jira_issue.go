@@ -251,9 +251,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
 	logger.Debug("listIssues", "JQL", jql)
 
-	count := 0
 	for {
-		count++
 		issues, resp, err := client.Issue.SearchWithContext(ctx, jql, &options)
 
 		if err != nil {
@@ -275,6 +273,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 				return nil, nil
 			}
 		}
+
 
 		last = resp.StartAt + len(issues)
 		if last >= resp.Total {

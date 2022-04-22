@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v3/grpc/proto"
@@ -22,7 +23,7 @@ func tableUser(_ context.Context) *plugin.Table {
 		Columns: []*plugin.Column{
 			{
 				Name:        "display_name",
-				Description: "The display name of the user. Depending on the user’s privacy setting, this may return an alternative value.",
+				Description: "The display name of the user. Depending on the user's privacy setting, this may return an alternative value.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
@@ -33,7 +34,7 @@ func tableUser(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "email_address",
-				Description: "The email address of the user. Depending on the user’s privacy setting, this may be returned as null.",
+				Description: "The email address of the user. Depending on the user's privacy setting, this may be returned as null.",
 				Type:        proto.ColumnType_STRING,
 			},
 			{
@@ -84,41 +85,65 @@ func listUsers(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		logger.Error("jira_user.listUsers", "connection_error", err)
 		return nil, err
 	}
 
-	req, _ := client.NewRequest("GET", "rest/api/2/users", nil)
-	users := new([]jira.User)
-
-	rsp, err := client.Do(req, users)
-	if err != nil {
-		logger.Error("listUsers", "Error", err)
-		return nil, err
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 100
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 100 {
+			maxResults = int(*queryLimit)
+		}
 	}
 
-	for _, user := range *users {
-		d.StreamListItem(ctx, user)
-	}
+	last := 0
+	for {
+		apiEndpoint := fmt.Sprintf("rest/api/2/users/search?startAt=%d&maxResults=%d", last, maxResults)
 
-	return rsp, err
+		req, _ := client.NewRequest("GET", apiEndpoint, nil)
+		users := new([]jira.User)
+		_, err := client.Do(req, users)
+
+		if err != nil {
+			logger.Error("jira_user.listUsers", "api_error", err)
+			return nil, err
+		}
+
+		for _, user := range *users {
+			d.StreamListItem(ctx, user)
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
+		}
+
+		// evaluate paging start value for next iteration
+		last = last + len(*users)
+
+		// API doesn't gives paging parameters in the response,
+		// therefore using output length to quit paging
+		if len(*users) < 100 {
+			return nil, nil
+		}
+	}
 }
 
 //// HYDRATE FUNCTIONS
 
 func getUserGroups(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getUserGroups")
-
 	user := h.Item.(jira.User)
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_user.getUserGroups", "connection_error", err)
 		return nil, err
 	}
 
 	groups, _, err := client.User.GetGroups(user.AccountID)
 	if err != nil {
-		logger.Error("getUserGroups", "Error", err)
+		plugin.Logger(ctx).Error("jira_user.getUserGroups", "api_error", err)
 		return nil, err
 	}
 
