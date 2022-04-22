@@ -80,21 +80,18 @@ func tableUser(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listUsers(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listUsers")
-
 	client, err := connect(ctx, d)
 	if err != nil {
-		logger.Error("jira_user.listUsers", "connection_error", err)
+		plugin.Logger(ctx).Error("jira_user.listUsers", "connection_error", err)
 		return nil, err
 	}
 
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
 	queryLimit := d.QueryContext.Limit
-	var maxResults int = 100
+	var maxResults int = 1000
 	if d.QueryContext.Limit != nil {
-		if *queryLimit < 100 {
+		if *queryLimit < 1000 {
 			maxResults = int(*queryLimit)
 		}
 	}
@@ -103,17 +100,22 @@ func listUsers(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 	for {
 		apiEndpoint := fmt.Sprintf("rest/api/2/users/search?startAt=%d&maxResults=%d", last, maxResults)
 
-		req, _ := client.NewRequest("GET", apiEndpoint, nil)
-		users := new([]jira.User)
-		_, err := client.Do(req, users)
-
+		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
-			logger.Error("jira_user.listUsers", "api_error", err)
+			plugin.Logger(ctx).Error("jira_user.listUsers", "create_get_request_error", err)
+			return nil, err
+		}
+
+		users := new([]jira.User)
+		_, err = client.Do(req, users)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_user.listUsers", "api_error", err)
 			return nil, err
 		}
 
 		for _, user := range *users {
 			d.StreamListItem(ctx, user)
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.QueryStatus.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
@@ -124,7 +126,7 @@ func listUsers(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 
 		// API doesn't gives paging parameters in the response,
 		// therefore using output length to quit paging
-		if len(*users) < 100 {
+		if len(*users) < 1000 {
 			return nil, nil
 		}
 	}
