@@ -74,16 +74,23 @@ func tableWorkflow(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listWorkflows(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listWorkflows")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_workflow.listWorkflows", "connection_error", err)
 		return nil, err
 	}
 
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 1000
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 1000 {
+			maxResults = int(*queryLimit)
+		}
+	}
+
 	last := 0
-	maxResults := 1000
 	for {
 		apiEndpoint := fmt.Sprintf(
 			"/rest/api/3/workflow/search?startAt=%d&maxResults=%d&expand=transitions,transitions.rules,statuses,statuses.properties,default",
@@ -99,12 +106,16 @@ func listWorkflows(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDa
 		listResult := new(ListWorkflowResult)
 		_, err = client.Do(req, listResult)
 		if err != nil {
-			logger.Error("listWorkflows", "Error", err)
+			plugin.Logger(ctx).Error("jira_workflow.listWorkflows", "api_error", err)
 			return nil, err
 		}
 
 		for _, workflow := range listResult.Values {
 			d.StreamListItem(ctx, workflow)
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
@@ -117,9 +128,6 @@ func listWorkflows(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDa
 //// HYDRATE FUNCTIONS
 
 func getWorkflow(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getWorkflow")
-
 	workflowName := url.PathEscape(d.KeyColumnQuals["name"].GetStringValue())
 
 	if workflowName == "" {
@@ -128,6 +136,7 @@ func getWorkflow(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_workflow.getWorkflow", "connection_error", err)
 		return nil, err
 	}
 
@@ -135,7 +144,6 @@ func getWorkflow(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 		"/rest/api/3/workflow/search?workflowName=%s&expand=transitions,transitions.rules,statuses,statuses.properties,default",
 		workflowName,
 	)
-	logger.Trace("getWorkflow", "API Endpoint", apiEndpoint)
 
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
@@ -145,7 +153,7 @@ func getWorkflow(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	workflow := new(ListWorkflowResult)
 	_, err = client.Do(req, workflow)
 	if err != nil {
-		logger.Error("listWorkflows", "Error", err)
+		plugin.Logger(ctx).Error("jira_workflow.getWorkflow", "api_error", err)
 		return nil, err
 	}
 	if len(workflow.Values) < 1 {
