@@ -72,22 +72,24 @@ func tableProjectRole(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listProjectRoles(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listProjectRoles")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_project_role.listProjectRoles", "connection_error", err)
 		return nil, err
 	}
 
-	roles, _, err := client.Role.GetList()
+	roles, _, err := client.Role.GetListWithContext(ctx)
 	if err != nil {
-		logger.Error("listProjectRoles", "Error", err)
+		plugin.Logger(ctx).Error("jira_project_role.listProjectRoles", "api_error", err)
 		return nil, err
 	}
 
 	for _, role := range *roles {
 		d.StreamListItem(ctx, role)
+		// Context may get cancelled due to manual cancellation or if the limit has been reached
+		if d.QueryStatus.RowsRemaining(ctx) == 0 {
+			return nil, nil
+		}
 	}
 
 	return nil, err
@@ -96,13 +98,11 @@ func listProjectRoles(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrat
 //// HYDRATE FUNCTION
 
 func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getProjectRole")
-
 	roleId := d.KeyColumnQuals["id"].GetInt64Value()
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_project_role.getProjectRole", "connection_error", err)
 		return nil, err
 	}
 
@@ -115,7 +115,7 @@ func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 		if isNotFoundError(err) {
 			return nil, nil
 		}
-		logger.Error("getProjectRole", "Error", err)
+		plugin.Logger(ctx).Error("jira_project_role.getProjectRole", "api_error", err)
 		return nil, err
 	}
 

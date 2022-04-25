@@ -87,18 +87,25 @@ func tableSprint(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listSprints")
-
 	board := h.Item.(jira.Board)
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_sprint.listSprints", "connection_error", err)
 		return nil, err
 	}
 
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 1000
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 1000 {
+			maxResults = int(*queryLimit)
+		}
+	}
+
 	last := 0
-	maxResults := 1000
 	for {
 		apiEndpoint := fmt.Sprintf(
 			"/rest/agile/1.0/board/%d/sprint?startAt=%d&maxResults=%d",
@@ -109,6 +116,7 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_sprint.listSprints", "get_request_error", err)
 			return nil, err
 		}
 
@@ -118,12 +126,16 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 			if isNotFoundError(err) {
 				return nil, nil
 			}
-			logger.Error("listSprints", "Error", err)
+			plugin.Logger(ctx).Error("jira_sprint.listSprints", "api_error", err)
 			return nil, err
 		}
 
 		for _, sprint := range listResult.Values {
 			d.StreamListItem(ctx, SprintItemInfo{int64(board.ID), sprint})
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = listResult.StartAt + len(listResult.Values)

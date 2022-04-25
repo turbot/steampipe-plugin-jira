@@ -74,17 +74,25 @@ func tableBoard(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listBoards")
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_board.listBoards", "connection_error", err)
 		return nil, err
 	}
 
 	last := 0
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 1000
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 1000 {
+			maxResults = int(*queryLimit)
+		}
+	}
 	for {
 		opt := jira.SearchOptions{
-			MaxResults: 1000,
+			MaxResults: maxResults,
 			StartAt:    last,
 		}
 
@@ -92,7 +100,7 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			SearchOptions: opt,
 		})
 		if err != nil {
-			logger.Error("listBoards", "Error", err)
+			plugin.Logger(ctx).Error("jira_board.listBoards", "api_error", err)
 			return nil, err
 		}
 
@@ -100,6 +108,10 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 		for _, board := range boardList.Values {
 			d.StreamListItem(ctx, board)
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = resp.StartAt + len(boardList.Values)
@@ -112,14 +124,13 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 //// HYDRATE FUNCTIONS
 
 func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getBoard")
 	boardId := d.KeyColumnQuals["id"].GetInt64Value()
 	if boardId == 0 {
 		return nil, nil
 	}
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_board.getBoard", "connection_error", err)
 		return nil, err
 	}
 
@@ -128,7 +139,7 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		if isNotFoundError(err) {
 			return nil, nil
 		}
-		logger.Error("getBoard", "Error", err)
+		plugin.Logger(ctx).Error("jira_board.getBoard", "api_error", err)
 		return nil, err
 	}
 
@@ -136,18 +147,17 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 }
 
 func getBoardConfiguration(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getBoardConfiguration")
 	board := h.Item.(jira.Board)
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_board.getBoardConfiguration", "connection_error", err)
 		return nil, err
 	}
 
 	boardConfiguration, _, err := client.Board.GetBoardConfiguration(board.ID)
 	if err != nil {
-		logger.Error("getBoardConfiguration", "Error", err)
+		plugin.Logger(ctx).Error("jira_board.getBoardConfiguration", "api_error", err)
 		return nil, err
 	}
 

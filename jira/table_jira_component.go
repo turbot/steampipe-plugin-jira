@@ -130,23 +130,31 @@ func tableComponent(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listComponents")
-
 	project := h.Item.(Project)
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_component.listComponents", "connection_error", err)
 		return nil, err
 	}
 
 	last := 0
-	maxResults := 1000
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 1000
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 1000 {
+			maxResults = int(*queryLimit)
+		}
+	}
+
 	for {
 		apiEndpoint := fmt.Sprintf("/rest/api/3/project/%s/component?startAt=%d&maxResults=%d", project.ID, last, maxResults)
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_component.listComponents", "get_request_error", err)
 			return nil, err
 		}
 
@@ -156,12 +164,17 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 			if isNotFoundError(err) {
 				return nil, nil
 			}
-			logger.Error("listComponents", "Error", err)
+			plugin.Logger(ctx).Error("jira_component.listComponents", "api_error", err)
 			return nil, err
 		}
 
 		for _, component := range listResult.Values {
 			d.StreamListItem(ctx, component)
+
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
@@ -174,22 +187,19 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 //// HYDRATE FUNCTIONS
 
 func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getComponent")
 	componentId := d.KeyColumnQuals["id"].GetStringValue()
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_component.getComponent", "connection_error", err)
 		return nil, err
 	}
 
-	apiEndpoint := fmt.Sprintf(
-		"/rest/api/3/component/%s",
-		componentId,
-	)
+	apiEndpoint := fmt.Sprintf("/rest/api/3/component/%s", componentId)
 
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_component.getComponent", "get_request_error", err)
 		return nil, err
 	}
 
@@ -197,7 +207,7 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 
 	_, err = client.Do(req, result)
 	if err != nil {
-		plugin.Logger(ctx).Error("getComponent", "Error", err)
+		plugin.Logger(ctx).Error("jira_component.getComponent", "api_error", err)
 		return nil, err
 	}
 

@@ -75,16 +75,22 @@ func tableEpic(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listEpics")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_epic.listEpics", "connection_error", err)
 		return nil, err
 	}
 
 	last := 0
-	maxResults := 1000
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 100
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 100 {
+			maxResults = int(*queryLimit)
+		}
+	}
 	for {
 		apiEndpoint := fmt.Sprintf(
 			"/rest/agile/1.0/epic/search?startAt=%d&maxResults=%d",
@@ -94,18 +100,23 @@ func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_epic.listEpics", "get_request_error", err)
 			return nil, err
 		}
 
 		listResult := new(ListEpicResult)
 		_, err = client.Do(req, listResult)
 		if err != nil {
-			logger.Error("listEpics", "Error", err)
+			plugin.Logger(ctx).Error("jira_epic.listEpics", "api_error", err)
 			return nil, err
 		}
 
 		for _, epic := range listResult.Values {
 			d.StreamListItem(ctx, epic)
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
@@ -133,11 +144,13 @@ func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (i
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_epic.getEpic", "connection_error", err)
 		return nil, err
 	}
 
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_epic.getEpic", "get_request_error", err)
 		return nil, err
 	}
 
@@ -147,7 +160,7 @@ func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (i
 		if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 			return nil, nil
 		}
-		logger.Error("getEpic", "Error", err)
+		plugin.Logger(ctx).Error("jira_epic.getEpic", "api_error", err)
 		return nil, err
 	}
 

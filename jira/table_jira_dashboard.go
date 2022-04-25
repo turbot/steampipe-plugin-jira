@@ -97,16 +97,23 @@ func tableDashboard(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listDashboards")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_dashboard.listDashboards", "connection_error", err)
 		return nil, err
 	}
 
 	last := 0
-	maxResults := 1000
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 1000
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 1000 {
+			maxResults = int(*queryLimit)
+		}
+	}
+
 	for {
 		apiEndpoint := fmt.Sprintf(
 			"/rest/api/3/dashboard?startAt=%d&maxResults=%d",
@@ -116,19 +123,23 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
-			logger.Error("listDashboards", "Connection error", err)
+			plugin.Logger(ctx).Error("jira_dashboard.listDashboards", "get_request_error", err)
 			return nil, err
 		}
 
 		listResult := new(ListResult)
 		_, err = client.Do(req, listResult)
 		if err != nil {
-			logger.Error("listDashboards", "Error", err)
+			plugin.Logger(ctx).Error("jira_dashboard.listDashboards", "api_error", err)
 			return nil, err
 		}
 
 		for _, dashboard := range listResult.Values {
 			d.StreamListItem(ctx, dashboard)
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
@@ -141,9 +152,6 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 //// HDRATE FUNCTIONS
 
 func getDashboard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getDashboard")
-
 	dashboardId := d.KeyColumnQuals["id"].GetStringValue()
 
 	if dashboardId == "" {
@@ -153,11 +161,13 @@ func getDashboard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	dashboard := new(Dashboard)
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_dashboard.getDashboard", "connection_error", err)
 		return nil, err
 	}
 	apiEndpoint := fmt.Sprintf("/rest/api/3/dashboard/%s", dashboardId)
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_dashboard.getDashboard", "get_request_error", err)
 		return nil, err
 	}
 
@@ -166,7 +176,7 @@ func getDashboard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 		if isNotFoundError(err) {
 			return nil, nil
 		}
-		logger.Error("getDashboard", "Error", err)
+		plugin.Logger(ctx).Error("jira_dashboard.getDashboard", "api_error", err)
 		return nil, err
 	}
 

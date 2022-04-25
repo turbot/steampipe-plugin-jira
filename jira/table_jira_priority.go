@@ -72,24 +72,31 @@ func tablePriority(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listPriorities(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	plugin.Logger(ctx).Trace("listPriorities")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_priority.listPriorities", "connection_error", err)
 		return nil, err
 	}
 
-	req, _ := client.NewRequest("GET", "rest/api/3/priority", nil)
+	req, err := client.NewRequest("GET", "rest/api/3/priority", nil)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_priority.listPriorities", "get_request_error", err)
+		return nil, err
+	}
 	priorities := new([]jira.Priority)
 
 	_, err = client.Do(req, priorities)
 	if err != nil {
-		plugin.Logger(ctx).Error("listPriorities", "Error", err)
+		plugin.Logger(ctx).Error("jira_priority.listPriorities", "api_error", err)
 		return nil, err
 	}
 
 	for _, priority := range *priorities {
 		d.StreamListItem(ctx, priority)
+		// Context may get cancelled due to manual cancellation or if the limit has been reached
+		if d.QueryStatus.RowsRemaining(ctx) == 0 {
+			return nil, nil
+		}
 	}
 
 	return nil, err
@@ -98,10 +105,9 @@ func listPriorities(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 //// HYDRATE FUNCTIONS
 
 func getPriority(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	plugin.Logger(ctx).Trace("getPriority")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_priority.getPriority", "connection_error", err)
 		return nil, err
 	}
 	priorityId := d.KeyColumnQuals["id"].GetStringValue()
@@ -114,13 +120,14 @@ func getPriority(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	apiEndpoint := fmt.Sprintf("/rest/api/3/priority/%s", priorityId)
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_priority.getPriority", "get_request_error", err)
 		return nil, err
 	}
 	result := new(jira.Priority)
 
 	_, err = client.Do(req, result)
 	if err != nil {
-		plugin.Logger(ctx).Error("getPriority", "Error", err)
+		plugin.Logger(ctx).Error("jira_priority.getPriority", "api_error", err)
 		return nil, err
 	}
 

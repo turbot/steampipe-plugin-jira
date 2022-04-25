@@ -223,11 +223,9 @@ func tableIssue(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listIssues")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.getIssue", "connection_error", err)
 		return nil, err
 	}
 
@@ -249,18 +247,16 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	}
 
 	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
-	logger.Debug("listIssues", "JQL", jql)
+	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
 
-	count := 0
 	for {
-		count++
 		issues, resp, err := client.Issue.SearchWithContext(ctx, jql, &options)
 
 		if err != nil {
 			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 				return nil, nil
 			}
-			logger.Error("listIssues", "Error", err)
+			plugin.Logger(ctx).Error("jira_issue.listIssues", "api_error", err)
 			return nil, err
 		}
 
@@ -296,6 +292,7 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.getIssue", "connection_error", err)
 		return nil, err
 	}
 
@@ -315,7 +312,7 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		if isNotFoundError(err) {
 			return nil, nil
 		}
-		logger.Error("getIssue", "Error", err)
+		plugin.Logger(ctx).Error("jira_issue.getIssue", "api_error", err)
 		return nil, err
 	}
 
