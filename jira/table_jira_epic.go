@@ -82,7 +82,15 @@ func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 	}
 
 	last := 0
-	maxResults := 1000
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 100
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 100 {
+			maxResults = int(*queryLimit)
+		}
+	}
 	for {
 		apiEndpoint := fmt.Sprintf(
 			"/rest/agile/1.0/epic/search?startAt=%d&maxResults=%d",
@@ -105,6 +113,10 @@ func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 
 		for _, epic := range listResult.Values {
 			d.StreamListItem(ctx, epic)
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = listResult.StartAt + len(listResult.Values)

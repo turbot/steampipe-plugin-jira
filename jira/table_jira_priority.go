@@ -93,6 +93,10 @@ func listPriorities(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 
 	for _, priority := range *priorities {
 		d.StreamListItem(ctx, priority)
+		// Context may get cancelled due to manual cancellation or if the limit has been reached
+		if d.QueryStatus.RowsRemaining(ctx) == 0 {
+			return nil, nil
+		}
 	}
 
 	return nil, err

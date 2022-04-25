@@ -81,9 +81,18 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	}
 
 	last := 0
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 1000
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 1000 {
+			maxResults = int(*queryLimit)
+		}
+	}
 	for {
 		opt := jira.SearchOptions{
-			MaxResults: 1000,
+			MaxResults: maxResults,
 			StartAt:    last,
 		}
 
@@ -99,6 +108,10 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 		for _, board := range boardList.Values {
 			d.StreamListItem(ctx, board)
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = resp.StartAt + len(boardList.Values)

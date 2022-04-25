@@ -211,10 +211,19 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 	board := h.Item.(jira.Board)
 
 	last := 0
-	maxResults := 1000
+
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 1000
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 1000 {
+			maxResults = int(*queryLimit)
+		}
+	}
+
 	var epicKey string
 	for {
-
 		apiEndpoint := fmt.Sprintf(
 			"/rest/agile/1.0/board/%d/backlog?startAt=%d&maxResults=%d&expand=names",
 			board.ID,
@@ -246,6 +255,10 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 
 		for _, issue := range listIssuesResult.Issues {
 			d.StreamListItem(ctx, BacklogIssueInfo{issue, board.ID, board.Name, keys})
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
 		}
 
 		last = listIssuesResult.StartAt + len(listIssuesResult.Issues)
