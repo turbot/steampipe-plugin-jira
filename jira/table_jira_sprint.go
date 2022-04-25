@@ -116,7 +116,7 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
-			plugin.Logger(ctx).Error("jira_sprint.listSprints", "create_get_request_error", err)
+			plugin.Logger(ctx).Error("jira_sprint.listSprints", "get_request_error", err)
 			return nil, err
 		}
 

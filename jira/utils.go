@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -22,7 +23,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 
 	// Start with an empty Turbot config
 	tokenProvider := jira.BasicAuthTransport{}
-	var baseUrl string
+	var baseUrl, username, password string
 
 	// Prefer config options given in Steampipe
 	jiraConfig := GetConfig(d.Connection)
@@ -35,6 +36,16 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	}
 	if jiraConfig.Token != nil {
 		tokenProvider.Password = *jiraConfig.Token
+	}
+
+	if baseUrl == "" {
+		return nil, errors.New("'base_url' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+	}
+	if username == "" {
+		return nil, errors.New("'username' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+	}
+	if password == "" {
+		return nil, errors.New("'token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
 
 	// Create the client

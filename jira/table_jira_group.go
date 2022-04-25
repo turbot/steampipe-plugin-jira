@@ -65,11 +65,9 @@ func tableGroup(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listGroups(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listGroups")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_group.listGroups", "connection_error", err)
 		return nil, err
 	}
 
@@ -84,13 +82,14 @@ func listGroups(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_group.listGroups", "get_request_error", err)
 			return nil, err
 		}
 
 		listGroupResult := new(ListGroupResult)
 		_, err = client.Do(req, listGroupResult)
 		if err != nil {
-			logger.Error("listGroups", "Error", err)
+			plugin.Logger(ctx).Error("jira_group.listGroups", "api_error", err)
 			return nil, err
 		}
 
@@ -108,9 +107,6 @@ func listGroups(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 //// HDRATE FUNCTIONS
 
 func getGroup(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getGroup")
-
 	groupId := d.KeyColumnQuals["id"].GetStringValue()
 
 	if groupId == "" {
@@ -120,17 +116,20 @@ func getGroup(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	listGroupResult := new(ListGroupResult)
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_group.getGroup", "connection_error", err)
 		return nil, err
 	}
+
 	apiEndpoint := fmt.Sprintf("/rest/api/3/group/bulk?groupId=%s", groupId)
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
-		logger.Error("getGroup", "Error", err)
+		plugin.Logger(ctx).Error("jira_group.getGroup", "get_request_error", err)
 		return nil, err
 	}
 
 	_, err = client.Do(req, listGroupResult)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_group.getGroup", "api_error", err)
 		return nil, err
 	}
 
@@ -141,12 +140,11 @@ func getGroup(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 }
 
 func getGroupMembers(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getGroupMembers")
 	group := h.Item.(Group)
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_group.getGroupMembers", "connection_error", err)
 		return nil, err
 	}
 
@@ -165,7 +163,7 @@ func getGroupMembers(ctx context.Context, d *plugin.QueryData, h *plugin.Hydrate
 			if isNotFoundError(err) {
 				return groupMembers, nil
 			}
-			logger.Error("getGroupMembers", "Error", err)
+			plugin.Logger(ctx).Error("jira_group.getGroupMembers", "api_error", err)
 			return nil, err
 		}
 

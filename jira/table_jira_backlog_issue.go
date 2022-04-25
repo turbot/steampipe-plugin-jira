@@ -202,11 +202,9 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listBacklogIssues")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_backlog_issue.listBacklogIssues", "connection_error", err)
 		return nil, err
 	}
 
@@ -229,13 +227,14 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 				return nil, nil
 			}
-			logger.Error("listBacklogIssues", "Error", err)
+			plugin.Logger(ctx).Error("jira_backlog_issue.listBacklogIssues", "get_request_error", err)
 			return nil, err
 		}
 
 		listIssuesResult := new(ListIssuesResult)
 		_, err = client.Do(req, listIssuesResult)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_backlog_issue.listBacklogIssues", "api_error", err)
 			return nil, err
 		}
 

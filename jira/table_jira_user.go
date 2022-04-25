@@ -102,7 +102,7 @@ func listUsers(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
-			plugin.Logger(ctx).Error("jira_user.listUsers", "create_get_request_error", err)
+			plugin.Logger(ctx).Error("jira_user.listUsers", "get_request_error", err)
 			return nil, err
 		}
 

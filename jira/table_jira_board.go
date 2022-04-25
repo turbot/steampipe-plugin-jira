@@ -74,10 +74,9 @@ func tableBoard(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listBoards")
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_board.listBoards", "connection_error", err)
 		return nil, err
 	}
 
@@ -92,7 +91,7 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			SearchOptions: opt,
 		})
 		if err != nil {
-			logger.Error("listBoards", "Error", err)
+			plugin.Logger(ctx).Error("jira_board.listBoards", "api_error", err)
 			return nil, err
 		}
 
@@ -112,14 +111,13 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 //// HYDRATE FUNCTIONS
 
 func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getBoard")
 	boardId := d.KeyColumnQuals["id"].GetInt64Value()
 	if boardId == 0 {
 		return nil, nil
 	}
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_board.getBoard", "connection_error", err)
 		return nil, err
 	}
 
@@ -128,7 +126,7 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		if isNotFoundError(err) {
 			return nil, nil
 		}
-		logger.Error("getBoard", "Error", err)
+		plugin.Logger(ctx).Error("jira_board.getBoard", "api_error", err)
 		return nil, err
 	}
 
@@ -136,18 +134,17 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 }
 
 func getBoardConfiguration(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getBoardConfiguration")
 	board := h.Item.(jira.Board)
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_board.getBoardConfiguration", "connection_error", err)
 		return nil, err
 	}
 
 	boardConfiguration, _, err := client.Board.GetBoardConfiguration(board.ID)
 	if err != nil {
-		logger.Error("getBoardConfiguration", "Error", err)
+		plugin.Logger(ctx).Error("jira_board.getBoardConfiguration", "api_error", err)
 		return nil, err
 	}
 

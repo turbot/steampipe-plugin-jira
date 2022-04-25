@@ -86,11 +86,13 @@ func listAdvancedSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.Hy
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_advanced_setting.listAdvancedSettings", "connection_error", err)
 		return nil, err
 	}
 
 	req, err := client.NewRequest("GET", "/rest/api/3/application-properties/advanced-settings", nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_advanced_setting.listAdvancedSettings", "get_request_error", err)
 		return nil, err
 	}
 
@@ -100,7 +102,7 @@ func listAdvancedSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.Hy
 		if isNotFoundError(err) {
 			return nil, nil
 		}
-		logger.Error("listAdvancedSettings", "Error", err)
+		plugin.Logger(ctx).Error("jira_advanced_setting.listAdvancedSettings", "api_error", err)
 		return nil, err
 	}
 
@@ -113,22 +115,20 @@ func listAdvancedSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.Hy
 //// HYDRATE FUNCTIONS
 
 func getAdvancedSettingProperty(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getAdvancedSettingProperty")
 	ID := d.KeyColumnQuals["id"].GetStringValue()
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_advanced_setting.getAdvancedSettingProperty", "connection_error", err)
 		return nil, err
 	}
 
-	apiEndpoint := fmt.Sprintf(
-		"/rest/api/3/application-properties?key=%s",
-		ID,
-	)
+	apiEndpoint := fmt.Sprintf("/rest/api/3/application-properties?key=%s", ID)
 
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_advanced_setting.getAdvancedSettingProperty", "get_request_error", err)
+
 		return nil, err
 	}
 
@@ -142,7 +142,7 @@ func getAdvancedSettingProperty(ctx context.Context, d *plugin.QueryData, _ *plu
 		if isBadRequestError(err) {
 			return nil, nil
 		}
-		plugin.Logger(ctx).Error("getAdvancedSettingProperty", "Error", err)
+		plugin.Logger(ctx).Error("jira_advanced_setting.getAdvancedSettingProperty", "api_error", err)
 		return nil, err
 	}
 

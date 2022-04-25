@@ -99,20 +99,20 @@ func tableIssueType(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssueTypes(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listIssueTypes")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue_type.listIssueTypes", "connection_error", err)
 		return nil, err
 	}
 
+	// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-types/
+	// Paging not supported
 	req, err := client.NewRequest("GET", "/rest/api/3/issuetype", nil)
 	if err != nil {
 		if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 			return nil, nil
 		}
-		logger.Error("listIssueTypes", "Error", err)
+		plugin.Logger(ctx).Error("jira_issue_type.listIssueTypes", "api_error", err)
 		return nil, err
 	}
 
@@ -132,9 +132,6 @@ func listIssueTypes(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 //// HYDRATE FUNCTION
 
 func getIssueType(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getIssueType")
-
 	issueTypeID := d.KeyColumnQuals["id"].GetStringValue()
 
 	if issueTypeID == "" {
@@ -143,17 +140,20 @@ func getIssueType(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	issueType := new(ListIssuesTypeResult)
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue_type.getIssueType", "connection_error", err)
 		return nil, err
 	}
 
 	apiEndpoint := fmt.Sprintf("/rest/api/3/issuetype/%s", issueTypeID)
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue_type.getIssueType", "get_request_error", err)
 		return nil, err
 	}
 
 	_, err = client.Do(req, issueType)
 	if err != nil && isNotFoundError(err) {
+		plugin.Logger(ctx).Error("jira_issue_type.getIssueType", "api_error", err)
 		return nil, nil
 	}
 

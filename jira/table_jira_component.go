@@ -130,13 +130,11 @@ func tableComponent(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listComponents")
-
 	project := h.Item.(Project)
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_component.listComponents", "connection_error", err)
 		return nil, err
 	}
 
@@ -147,6 +145,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_component.listComponents", "get_request_error", err)
 			return nil, err
 		}
 
@@ -156,7 +155,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 			if isNotFoundError(err) {
 				return nil, nil
 			}
-			logger.Error("listComponents", "Error", err)
+			plugin.Logger(ctx).Error("jira_component.listComponents", "api_error", err)
 			return nil, err
 		}
 
@@ -180,16 +179,15 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_component.getComponent", "connection_error", err)
 		return nil, err
 	}
 
-	apiEndpoint := fmt.Sprintf(
-		"/rest/api/3/component/%s",
-		componentId,
-	)
+	apiEndpoint := fmt.Sprintf("/rest/api/3/component/%s", componentId)
 
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_component.getComponent", "get_request_error", err)
 		return nil, err
 	}
 
@@ -197,7 +195,7 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 
 	_, err = client.Do(req, result)
 	if err != nil {
-		plugin.Logger(ctx).Error("getComponent", "Error", err)
+		plugin.Logger(ctx).Error("jira_component.getComponent", "api_error", err)
 		return nil, err
 	}
 

@@ -100,6 +100,7 @@ func listWorkflows(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDa
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_workflow.listWorkflows", "get_request_error", err)
 			return nil, err
 		}
 
@@ -147,6 +148,7 @@ func getWorkflow(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_workflow.getWorkflow", "get_request_error", err)
 		return nil, err
 	}
 

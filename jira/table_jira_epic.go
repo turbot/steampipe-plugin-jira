@@ -75,11 +75,9 @@ func tableEpic(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listEpics")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_epic.listEpics", "connection_error", err)
 		return nil, err
 	}
 
@@ -94,13 +92,14 @@ func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_epic.listEpics", "get_request_error", err)
 			return nil, err
 		}
 
 		listResult := new(ListEpicResult)
 		_, err = client.Do(req, listResult)
 		if err != nil {
-			logger.Error("listEpics", "Error", err)
+			plugin.Logger(ctx).Error("jira_epic.listEpics", "api_error", err)
 			return nil, err
 		}
 
@@ -133,11 +132,13 @@ func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (i
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_epic.getEpic", "connection_error", err)
 		return nil, err
 	}
 
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_epic.getEpic", "get_request_error", err)
 		return nil, err
 	}
 
@@ -147,7 +148,7 @@ func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (i
 		if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 			return nil, nil
 		}
-		logger.Error("getEpic", "Error", err)
+		plugin.Logger(ctx).Error("jira_epic.getEpic", "api_error", err)
 		return nil, err
 	}
 

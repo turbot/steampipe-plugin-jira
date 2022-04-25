@@ -68,16 +68,15 @@ func tableGlobalSetting(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listGlobalSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listGlobalSettings")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_global_setting.listGlobalSettings", "connection_error", err)
 		return nil, err
 	}
 
 	req, err := client.NewRequest("GET", "/rest/api/3/configuration", nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_global_setting.listGlobalSettings", "get_request_error", err)
 		return nil, err
 	}
 
@@ -87,7 +86,7 @@ func listGlobalSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydr
 		if isNotFoundError(err) {
 			return nil, nil
 		}
-		logger.Error("listGlobalSettings", "Error", err)
+		plugin.Logger(ctx).Error("jira_global_setting.listGlobalSettings", "api_error", err)
 		return nil, err
 	}
 
