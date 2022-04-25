@@ -81,9 +81,6 @@ func tableAdvancedSetting(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listAdvancedSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listAdvancedSettings")
-
 	client, err := connect(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_advanced_setting.listAdvancedSettings", "connection_error", err)
