@@ -22,7 +22,7 @@ func tableUser(_ context.Context) *plugin.Table {
 		},
 		HydrateConfig: []plugin.HydrateConfig{
 			{
-				// Limit concurrency to avoid a 420 too many requests error
+				// Limit concurrency to avoid a 429 too many requests error
 				Func:           getUserGroups,
 				MaxConcurrency: 50,
 			},
