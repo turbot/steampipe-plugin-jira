@@ -20,6 +20,13 @@ func tableUser(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listUsers,
 		},
+		HydrateConfig: []plugin.HydrateConfig{
+			{
+				// To handle to many request 429
+				Func:           getUserGroups,
+				MaxConcurrency: 50,
+			},
+		},
 		Columns: []*plugin.Column{
 			{
 				Name:        "display_name",
