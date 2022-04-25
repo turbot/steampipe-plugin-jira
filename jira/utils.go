@@ -32,10 +32,10 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 		baseUrl = *jiraConfig.BaseUrl
 	}
 	if jiraConfig.Username != nil {
-		tokenProvider.Username = *jiraConfig.Username
+		username = *jiraConfig.Username
 	}
 	if jiraConfig.Token != nil {
-		tokenProvider.Password = *jiraConfig.Token
+		password = *jiraConfig.Token
 	}
 
 	if baseUrl == "" {
@@ -44,9 +44,12 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if username == "" {
 		return nil, errors.New("'username' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
+	tokenProvider.Username = *jiraConfig.Username
+
 	if password == "" {
 		return nil, errors.New("'token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
+	tokenProvider.Password = *jiraConfig.Token
 
 	// Create the client
 	client, err := jira.NewClient(tokenProvider.Client(), baseUrl)
