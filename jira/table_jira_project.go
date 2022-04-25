@@ -23,6 +23,10 @@ func tableProject(_ context.Context) *plugin.Table {
 		},
 		List: &plugin.ListConfig{
 			Hydrate: listProjects,
+			KeyColumns: plugin.KeyColumnSlice{
+				{Name: "key", Require: plugin.Optional},
+				{Name: "project_type_key", Require: plugin.Optional},
+			},
 		},
 		Columns: []*plugin.Column{
 			{
@@ -84,14 +88,10 @@ func tableProject(_ context.Context) *plugin.Table {
 				Description: "A link to information about this project, such as project documentation.",
 				Type:        proto.ColumnType_STRING,
 				Hydrate:     getProject,
+				Transform:   transform.FromField("url"),
 			},
 
 			// json fields
-			// {
-			// 	Name:        "avatar_urls",
-			// 	Description: "The URLs of the project's avatars.",
-			// 	Type:        proto.ColumnType_JSON,
-			// },
 			{
 				Name:        "component_ids",
 				Description: "List of the components contained in the project.",
@@ -125,39 +125,72 @@ func tableProject(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("listProjects")
-
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_project.listProjects", "connection_error", err)
 		return nil, err
 	}
 
-	req, err := client.NewRequest("GET", "/rest/api/3/project", nil)
-	if err != nil {
-		return nil, err
+	// If the requested number of items is less than the paging max limit
+	// set the limit to that instead
+	queryLimit := d.QueryContext.Limit
+	var maxResults int = 100
+	if d.QueryContext.Limit != nil {
+		if *queryLimit < 100 {
+			maxResults = int(*queryLimit)
+		}
 	}
 
-	projectList := new(ProjectList)
-	_, err = client.Do(req, projectList)
-	if err != nil {
-		logger.Error("listProjects", "Error", err)
-		return nil, err
+	query := ""
+	if d.KeyColumnQualString("key") != "" {
+		query = fmt.Sprintf("&%skeys=%s", query, d.KeyColumnQualString("key"))
+	}
+	if d.KeyColumnQualString("project_type_key") != "" {
+		query = fmt.Sprintf("&%stypeKey=%s", query, d.KeyColumnQualString("project_type_key"))
 	}
 
-	for _, project := range *projectList {
-		d.StreamListItem(ctx, project)
+	last := 0
+	for {
+		apiEndpoint := fmt.Sprintf(
+			"rest/api/3/project/search?expand=description,lead,issueTypes,url,projectKeys,permissions,insight&startAt=%d&maxResults=%d", last,
+			maxResults,
+		)
+
+		if query != "" {
+			apiEndpoint = fmt.Sprintf("%s%s", apiEndpoint, query)
+		}
+
+		req, err := client.NewRequestWithContext(ctx, "GET", apiEndpoint, nil)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_project.listProjects", "get_request_error", err)
+			return nil, err
+		}
+
+		projectList := new(ProjectListResult)
+		_, err = client.Do(req, projectList)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_project.listProjects", "api_error", err)
+			return nil, err
+		}
+
+		for _, project := range projectList.Values {
+			d.StreamListItem(ctx, project)
+			// Context may get cancelled due to manual cancellation or if the limit has been reached
+			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
+		}
+		last = projectList.StartAt + len(projectList.Values)
+		if projectList.IsLast {
+			return nil, nil
+		}
 	}
 
-	return nil, nil
 }
 
 //// HYDRATE FUNCTION
 
 func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Trace("getProject")
-
 	var projectId string
 	if h.Item != nil {
 		projectId = h.Item.(Project).ID
@@ -171,12 +204,14 @@ func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 
 	client, err := connect(ctx, d)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_project.getProject", "connection_error", err)
 		return nil, err
 	}
 
-	apiEndpoint := fmt.Sprintf("/rest/api/3/project/%s", projectId)
+	apiEndpoint := fmt.Sprintf("/rest/api/2/project/%s", projectId)
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_project.getProject", "get_request_error", err)
 		return nil, err
 	}
 
@@ -186,7 +221,7 @@ func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 		if isNotFoundError(err) {
 			return nil, nil
 		}
-		logger.Error("getUserGroups", "Error", err)
+		plugin.Logger(ctx).Error("jira_project.getProject", "api_error", err)
 		return nil, err
 	}
 
@@ -205,7 +240,14 @@ func extractProjectComponentIds(_ context.Context, d *transform.TransformData) (
 
 //// Custom Structs
 
-type ProjectList []Project
+// type ProjectListResult []Project
+type ProjectListResult struct {
+	MaxResults int       `json:"maxResults"`
+	StartAt    int       `json:"startAt"`
+	Total      int       `json:"total"`
+	IsLast     bool      `json:"isLast"`
+	Values     []Project `json:"values"`
+}
 
 // Project represents a Jira Project.
 type Project struct {
