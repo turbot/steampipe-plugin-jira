@@ -1,3 +1,15 @@
+## v0.3.0 [2022-04-25]
+
+_Enhancements_
+
+- Added `key` and `project_type_key` as optional list key columns to `jira_project` table. ([#50](https://github.com/turbot/steampipe-plugin-jira/pull/50))
+- Added context cancellation and limit handling for all tables. ([#50](https://github.com/turbot/steampipe-plugin-jira/pull/50))
+- Improved help messages if any of the require configuration arguments aren't set. ([#50](https://github.com/turbot/steampipe-plugin-jira/pull/50))
+
+_Bug fixes_
+
+- Fixed paging for `jira_project` and `jira_user` tables so all results should be returned correctly. ([#50](https://github.com/turbot/steampipe-plugin-jira/pull/50))
+
 ## v0.2.0 [2022-04-15]
 
 _Enhancements_
