@@ -1,3 +1,9 @@
+## v0.4.0 [2022-04-27]
+
+_Enhancements_
+
+- Added support for native Linux ARM and Mac M1 builds. ([#51](https://github.com/turbot/steampipe-plugin-jira/pull/51))
+
 ## v0.3.0 [2022-04-25]
 
 _Enhancements_
