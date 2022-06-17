@@ -38,6 +38,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "project_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "reporter_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "reporter_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "resolution_date", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "updated", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
@@ -176,6 +177,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Description: "Display name of the user/application issue is reported.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Reporter.DisplayName"),
+			},
+			{
+				Name:        "resolution_date",
+				Description: "Date the issue was resolved.",
+				Type:        proto.ColumnType_TIMESTAMP,
+				Transform:   transform.FromField("Fields.Resolutiondate").Transform(convertJiraTime),
 			},
 			{
 				Name:        "summary",
