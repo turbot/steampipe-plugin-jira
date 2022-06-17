@@ -9,7 +9,7 @@ import (
 
 const pluginName = "steampipe-plugin-jira"
 
-// Plugin creates this (azure) plugin
+// Plugin creates this (jira) plugin
 func Plugin(ctx context.Context) *plugin.Plugin {
 	p := &plugin.Plugin{
 		Name:             pluginName,
