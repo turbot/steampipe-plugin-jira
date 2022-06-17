@@ -1,3 +1,9 @@
+## v0.5.0 [2022-06-17]
+
+_Enhancements_
+
+- Added the column `resolution_date` to `jira_issue` table. ([#56](https://github.com/turbot/steampipe-plugin-jira/pull/56))
+
 ## v0.4.1 [2022-05-23]
 
 _Bug fixes_
