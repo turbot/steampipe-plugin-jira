@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
@@ -241,7 +242,10 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		}
 
 		listIssuesResult := new(ListIssuesResult)
-		_, err = client.Do(req, listIssuesResult)
+		//_, err = client.Do(req, listIssuesResult)
+		res, err := client.Do(req, listIssuesResult)
+		body, _ := ioutil.ReadAll(res.Body)
+		plugin.Logger(ctx).Warn("jira_backlog_issue.listBacklogIssues", "res_body", body)
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_backlog_issue.listBacklogIssues", "api_error", err)
 			return nil, err
