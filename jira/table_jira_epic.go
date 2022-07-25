@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/v3/grpc/proto"
@@ -105,7 +106,10 @@ func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 		}
 
 		listResult := new(ListEpicResult)
-		_, err = client.Do(req, listResult)
+		res, err := client.Do(req, listResult)
+		body, _ := ioutil.ReadAll(res.Body)
+		plugin.Logger(ctx).Debug("jira_epic.listEpics", "res_body", string(body))
+
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_epic.listEpics", "api_error", err)
 			return nil, err
@@ -155,7 +159,10 @@ func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (i
 	}
 
 	epic := new(Epic)
-	_, err = client.Do(req, epic)
+	res, err := client.Do(req, epic)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_epic.getEpic", "res_body", string(body))
+
 	if err != nil {
 		if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
 			return nil, nil

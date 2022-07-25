@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v3/grpc/proto"
@@ -96,7 +97,10 @@ func listGroups(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		listGroupResult := new(ListGroupResult)
-		_, err = client.Do(req, listGroupResult)
+		res, err := client.Do(req, listGroupResult)
+		body, _ := ioutil.ReadAll(res.Body)
+		plugin.Logger(ctx).Debug("jira_group.listGroups", "res_body", string(body))
+
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_group.listGroups", "api_error", err)
 			return nil, err
@@ -140,7 +144,10 @@ func getGroup(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, err
 	}
 
-	_, err = client.Do(req, listGroupResult)
+	res, err := client.Do(req, listGroupResult)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_group.getGroup", "res_body", string(body))
+
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_group.getGroup", "api_error", err)
 		return nil, err
