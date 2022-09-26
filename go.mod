@@ -1,10 +1,10 @@
-module github.com/turbot/steampipe-plugin-jira
+module github.com/jdevoo/steampipe-plugin-jira
 
 go 1.17
 
 require (
 	github.com/andygrunwald/go-jira v1.13.0
-	github.com/turbot/steampipe-plugin-sdk/v3 v3.3.1
+	github.com/turbot/steampipe-plugin-sdk/v3 v3.3.2
 )
 
 require (

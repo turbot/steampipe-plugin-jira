@@ -81,6 +81,7 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	}
 
 	last := 0
+
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
 	queryLimit := d.QueryContext.Limit

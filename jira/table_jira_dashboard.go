@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v3/grpc/proto"
@@ -128,7 +129,9 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 		}
 
 		listResult := new(ListResult)
-		_, err = client.Do(req, listResult)
+		res, err := client.Do(req, listResult)
+		body, _ := ioutil.ReadAll(res.Body)
+		plugin.Logger(ctx).Debug("jira_dashboard.listDashboards", "res_body", string(body))
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_dashboard.listDashboards", "api_error", err)
 			return nil, err
@@ -171,7 +174,9 @@ func getDashboard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 		return nil, err
 	}
 
-	_, err = client.Do(req, dashboard)
+	res, err := client.Do(req, dashboard)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_dashboard.getDashboard", "res_body", string(body))
 	if err != nil {
 		if isNotFoundError(err) {
 			return nil, nil

@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/turbot/steampipe-plugin-sdk/v3/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v3/plugin/transform"
@@ -94,7 +95,10 @@ func listAdvancedSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.Hy
 	}
 
 	listAdvancedSettings := new([]AdvancedApplicationProperty)
-	_, err = client.Do(req, listAdvancedSettings)
+	res, err := client.Do(req, listAdvancedSettings)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_advanced_setting.listAdvancedSettings", "res_body", string(body))
+
 	if err != nil {
 		if isNotFoundError(err) {
 			return nil, nil
@@ -131,7 +135,9 @@ func getAdvancedSettingProperty(ctx context.Context, d *plugin.QueryData, _ *plu
 
 	result := new(AdvancedApplicationProperty)
 
-	_, err = client.Do(req, result)
+	res, err := client.Do(req, result)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_advanced_setting.getAdvancedSettingProperty", "res_body", string(body))
 	if err != nil {
 		if isNotFoundError(err) {
 			return nil, nil

@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v3/grpc/proto"
@@ -85,7 +86,9 @@ func listPriorities(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 	}
 	priorities := new([]jira.Priority)
 
-	_, err = client.Do(req, priorities)
+	res, err := client.Do(req, priorities)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_priority.listPriorities", "res_body", string(body))
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_priority.listPriorities", "api_error", err)
 		return nil, err
@@ -125,7 +128,9 @@ func getPriority(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	}
 	result := new(jira.Priority)
 
-	_, err = client.Do(req, result)
+	res, err := client.Do(req, result)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_priority.getPriority", "res_body", string(body))
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_priority.getPriority", "api_error", err)
 		return nil, err

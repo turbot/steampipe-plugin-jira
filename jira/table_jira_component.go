@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v3/grpc/proto"
@@ -139,6 +140,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 	}
 
 	last := 0
+
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
 	queryLimit := d.QueryContext.Limit
@@ -150,7 +152,12 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 	}
 
 	for {
-		apiEndpoint := fmt.Sprintf("/rest/api/3/project/%s/component?startAt=%d&maxResults=%d", project.ID, last, maxResults)
+		apiEndpoint := fmt.Sprintf(
+			"/rest/api/3/project/%s/component?startAt=%d&maxResults=%d",
+			project.ID,
+			last,
+			maxResults,
+		)
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
@@ -159,7 +166,9 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 		}
 
 		listResult := new(ListComponentResult)
-		_, err = client.Do(req, listResult)
+		res, err := client.Do(req, listResult)
+		body, _ := ioutil.ReadAll(res.Body)
+		plugin.Logger(ctx).Debug("jira_component.listComponents", "res_body", string(body))
 		if err != nil {
 			if isNotFoundError(err) {
 				return nil, nil
@@ -170,7 +179,6 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 
 		for _, component := range listResult.Values {
 			d.StreamListItem(ctx, component)
-
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.QueryStatus.RowsRemaining(ctx) == 0 {
 				return nil, nil
@@ -196,22 +204,23 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	}
 
 	apiEndpoint := fmt.Sprintf("/rest/api/3/component/%s", componentId)
-
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_component.getComponent", "get_request_error", err)
 		return nil, err
 	}
 
-	result := new(Component)
+	component := new(Component)
 
-	_, err = client.Do(req, result)
+	res, err := client.Do(req, component)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_component.getComponent", "res_body", string(body))
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_component.getComponent", "api_error", err)
 		return nil, err
 	}
 
-	return result, nil
+	return component, nil
 }
 
 type ListComponentResult struct {
