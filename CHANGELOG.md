@@ -2,7 +2,7 @@
 
 _Bug fixes_
 
-- Fixed typos in the `plugin.go` file and the filename `jira/table_jira_global_setting.go`. ([#58](https://github.com/turbot/steampipe-plugin-jira/pull/58)) (Thanks to [@s-spindler](https://github.com/s-spindler) for the contribution!)
+- Fixed typos in the `plugin.go` file and updated the filename to use `jira/table_jira_global_setting.go` instead of `jira/table_ jira_global_setting.go`. ([#58](https://github.com/turbot/steampipe-plugin-jira/pull/58)) (Thanks to [@s-spindler](https://github.com/s-spindler) for the contribution!)
 
 _Dependencies_
 
