@@ -1,3 +1,14 @@
+## v0.6.0 [2022-09-26]
+
+_Bug fixes_
+
+- Fixed typos in the `plugin.go` file and updated the filename to use `jira/table_jira_global_setting.go` instead of `jira/table_ jira_global_setting.go`. ([#58](https://github.com/turbot/steampipe-plugin-jira/pull/58)) (Thanks to [@s-spindler](https://github.com/s-spindler) for the contribution!)
+
+_Dependencies_
+
+- Recompiled plugin with [steampipe-plugin-sdk v4.1.7](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v417-2022-09-08) which includes several caching and memory management improvements. ([#62](https://github.com/turbot/steampipe-plugin-jira/pull/62))
+- Recompiled plugin with Go version `1.19`. ([#62](https://github.com/turbot/steampipe-plugin-jira/pull/62))
+
 ## v0.5.0 [2022-06-17]
 
 _Enhancements_
