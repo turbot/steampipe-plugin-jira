@@ -20,11 +20,10 @@ func tableSprint(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:        "jira_sprint",
 		Description: "Sprint is a short period in which the development team implements and delivers a discrete and potentially shippable application increment.",
-		//  TODO - Not getting board id details for get call
-		// Get: &plugin.GetConfig{
-		// 	KeyColumns: plugin.SingleColumn("id"),
-		// 	Hydrate:    getSprint,
-		// },
+		Get: &plugin.GetConfig{
+			KeyColumns: plugin.SingleColumn("id"),
+			Hydrate:    getSprint,
+		},
 		List: &plugin.ListConfig{
 			ParentHydrate: listBoards,
 			Hydrate:       listSprints,
@@ -42,7 +41,7 @@ func tableSprint(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "board_id",
-				Description: "The ID of the board the sprint belongs to.z",
+				Description: "The ID of the board the sprint belongs to.",
 				Type:        proto.ColumnType_INT,
 				Transform:   transform.FromField("BoardId", "OriginBoardId"),
 			},
@@ -149,6 +148,51 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	}
 }
 
+//// HYDRATE FUNCTION
+
+func getSprint(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	var sprintId int64
+	if h.Item != nil {
+		sprintId = h.Item.(Sprint).Id
+	} else {
+		sprintId = d.KeyColumnQuals["id"].GetInt64Value()
+	}
+
+	if sprintId == 0 {
+		return nil, nil
+	}
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_sprint.getSprint", "connection_error", err)
+		return nil, err
+	}
+
+	apiEndpoint := fmt.Sprintf("/rest/agile/1.0/sprint/%d", sprintId)
+	req, err := client.NewRequest("GET", apiEndpoint, nil)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_sprint.getSprint", "get_request_error", err)
+		return nil, err
+	}
+
+	sprint := new(Sprint)
+	res, err := client.Do(req, sprint)
+	body, _ := ioutil.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_sprint.getSprint", "res_body", string(body))
+	if err != nil {
+		if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
+			return nil, nil
+		}
+		plugin.Logger(ctx).Error("jira_sprint.getSprint", "api_error", err)
+		return nil, err
+	}
+
+	return sprint, err
+}
+
+//// Custom Structs
+
+// type ListSprintResult []Sprint
 type ListSprintResult struct {
 	MaxResults int      `json:"maxResults"`
 	StartAt    int      `json:"startAt"`
@@ -157,6 +201,7 @@ type ListSprintResult struct {
 	Values     []Sprint `json:"values"`
 }
 
+// Sprint represents a Jira Sprint.
 type Sprint struct {
 	Id            int64     `json:"id"`
 	Self          string    `json:"self"`
