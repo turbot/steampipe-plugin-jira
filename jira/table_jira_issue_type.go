@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
@@ -110,10 +109,7 @@ func listIssueTypes(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 	// Paging not supported
 	req, err := client.NewRequest("GET", "/rest/api/3/issuetype", nil)
 	if err != nil {
-		if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
-			return nil, nil
-		}
-		plugin.Logger(ctx).Error("jira_issue_type.listIssueTypes", "api_error", err)
+		plugin.Logger(ctx).Error("jira_issue_type.listIssueTypes", "get_request_error", err)
 		return nil, err
 	}
 
@@ -123,6 +119,10 @@ func listIssueTypes(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 	plugin.Logger(ctx).Debug("jira_issue_type.listIssueTypes", "res_body", string(body))
 
 	if err != nil {
+		if isNotFoundError(err) || isBadRequestError(err) {
+			return nil, nil
+		}
+		plugin.Logger(ctx).Error("jira_issue_type.listIssueTypes", "api_error", err)
 		return nil, err
 	}
 

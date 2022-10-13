@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -234,9 +233,6 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
-			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
-				return nil, nil
-			}
 			plugin.Logger(ctx).Error("jira_backlog_issue.listBacklogIssues", "get_request_error", err)
 			return nil, err
 		}
@@ -247,6 +243,9 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		plugin.Logger(ctx).Debug("jira_backlog_issue.listBacklogIssues", "res_body", string(body))
 
 		if err != nil {
+			if isNotFoundError(err) || isBadRequestError(err) {
+				return nil, nil
+			}
 			plugin.Logger(ctx).Error("jira_backlog_issue.listBacklogIssues", "api_error", err)
 			return nil, err
 		}

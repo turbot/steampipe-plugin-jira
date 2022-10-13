@@ -129,7 +129,6 @@ func getAdvancedSettingProperty(ctx context.Context, d *plugin.QueryData, _ *plu
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_advanced_setting.getAdvancedSettingProperty", "get_request_error", err)
-
 		return nil, err
 	}
 
@@ -140,10 +139,7 @@ func getAdvancedSettingProperty(ctx context.Context, d *plugin.QueryData, _ *plu
 	plugin.Logger(ctx).Debug("jira_advanced_setting.getAdvancedSettingProperty", "res_body", string(body))
 
 	if err != nil {
-		if isNotFoundError(err) {
-			return nil, nil
-		}
-		if isBadRequestError(err) {
+		if isBadRequestError(err) || isNotFoundError(err) {
 			return nil, nil
 		}
 		plugin.Logger(ctx).Error("jira_advanced_setting.getAdvancedSettingProperty", "api_error", err)

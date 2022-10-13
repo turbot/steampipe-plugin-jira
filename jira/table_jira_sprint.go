@@ -127,7 +127,7 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 		plugin.Logger(ctx).Debug("jira_sprint.listSprints", "res_body", string(body))
 
 		if err != nil {
-			if isNotFoundError(err) {
+			if isNotFoundError(err) || isBadRequestError(err) {
 				return nil, nil
 			}
 			plugin.Logger(ctx).Error("jira_sprint.listSprints", "api_error", err)

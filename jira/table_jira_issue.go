@@ -3,7 +3,6 @@ package jira
 import (
 	"context"
 	"io"
-	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -263,7 +262,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		plugin.Logger(ctx).Debug("jira_issue.listIssues", "res_body", string(body))
 
 		if err != nil {
-			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
+			if isNotFoundError(err) || isBadRequestError(err) {
 				return nil, nil
 			}
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "api_error", err)

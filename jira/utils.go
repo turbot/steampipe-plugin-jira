@@ -69,14 +69,6 @@ const (
 	ColumnDescriptionTitle = "Title of the resource."
 )
 
-func isNotFoundError(err error) bool {
-	return strings.Contains(err.Error(), "404")
-}
-
-func isBadRequestError(err error) bool {
-	return strings.Contains(err.Error(), "400")
-}
-
 //// TRANSFORM FUNCTION
 
 // convertJiraTime:: converts jira.Time to time.Time

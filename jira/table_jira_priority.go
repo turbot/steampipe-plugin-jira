@@ -134,6 +134,9 @@ func getPriority(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	plugin.Logger(ctx).Debug("jira_priority.getPriority", "res_body", string(body))
 
 	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
 		plugin.Logger(ctx).Error("jira_priority.getPriority", "api_error", err)
 		return nil, err
 	}

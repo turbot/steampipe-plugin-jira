@@ -214,6 +214,9 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	plugin.Logger(ctx).Debug("jira_component.getComponent", "res_body", string(body))
 
 	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
 		plugin.Logger(ctx).Error("jira_component.getComponent", "api_error", err)
 		return nil, err
 	}

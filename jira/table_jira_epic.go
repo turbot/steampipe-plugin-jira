@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
@@ -164,7 +163,7 @@ func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (i
 	plugin.Logger(ctx).Debug("jira_epic.getEpic", "res_body", string(body))
 
 	if err != nil {
-		if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
+		if isNotFoundError(err) || isBadRequestError(err) {
 			return nil, nil
 		}
 		plugin.Logger(ctx).Error("jira_epic.getEpic", "api_error", err)
