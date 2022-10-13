@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"io"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -78,7 +79,9 @@ func listProjectRoles(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrat
 		return nil, err
 	}
 
-	roles, _, err := client.Role.GetListWithContext(ctx)
+	roles, res, err := client.Role.GetListWithContext(ctx)
+	body, _ := io.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_project_role.listProjectRoles", "res_body", string(body))
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_project_role.listProjectRoles", "api_error", err)
 		return nil, err
@@ -110,7 +113,9 @@ func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 		return nil, nil
 	}
 
-	role, _, err := client.Role.Get(int(roleId))
+	role, res, err := client.Role.Get(int(roleId))
+	body, _ := io.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_project_role.getProjectRole", "res_body", string(body))
 	if err != nil {
 		if isNotFoundError(err) {
 			return nil, nil

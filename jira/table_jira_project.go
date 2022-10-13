@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -167,7 +168,10 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 		}
 
 		projectList := new(ProjectListResult)
-		_, err = client.Do(req, projectList)
+		res, err := client.Do(req, projectList)
+		body, _ := io.ReadAll(res.Body)
+		plugin.Logger(ctx).Debug("jira_project.listProjects", "res_body", string(body))
+
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_project.listProjects", "api_error", err)
 			return nil, err
@@ -216,7 +220,10 @@ func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 	}
 
 	project := new(Project)
-	_, err = client.Do(req, project)
+	res, err := client.Do(req, project)
+	body, _ := io.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_project.getProject", "res_body", string(body))
+
 	if err != nil {
 		if isNotFoundError(err) {
 			return nil, nil

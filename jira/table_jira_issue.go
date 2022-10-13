@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"io"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
@@ -257,7 +258,9 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
 
 	for {
-		issues, resp, err := client.Issue.SearchWithContext(ctx, jql, &options)
+		issues, res, err := client.Issue.SearchWithContext(ctx, jql, &options)
+		body, _ := io.ReadAll(res.Body)
+		plugin.Logger(ctx).Debug("jira_issue.listIssues", "res_body", string(body))
 
 		if err != nil {
 			if isNotFoundError(err) || strings.Contains(err.Error(), "400") {
@@ -279,8 +282,8 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			}
 		}
 
-		last = resp.StartAt + len(issues)
-		if last >= resp.Total {
+		last = res.StartAt + len(issues)
+		if last >= res.Total {
 			return nil, nil
 		} else {
 			options.StartAt = last
@@ -312,9 +315,11 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, nil
 	}
 
-	issue, _, err := client.Issue.Get(id, &jira.GetQueryOptions{
+	issue, res, err := client.Issue.Get(id, &jira.GetQueryOptions{
 		Expand: "names",
 	})
+	body, _ := io.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_issue.getIssue", "res_body", string(body))
 	if err != nil {
 		if isNotFoundError(err) {
 			return nil, nil
