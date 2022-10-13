@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"io"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -96,15 +97,17 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			StartAt:    last,
 		}
 
-		boardList, resp, err := client.Board.GetAllBoardsWithContext(ctx, &jira.BoardListOptions{
+		boardList, res, err := client.Board.GetAllBoardsWithContext(ctx, &jira.BoardListOptions{
 			SearchOptions: opt,
 		})
+		body, _ := io.ReadAll(res.Body)
+		plugin.Logger(ctx).Debug("jira_board.listBoards", "res_body", string(body))
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_board.listBoards", "api_error", err)
 			return nil, err
 		}
 
-		total := resp.Total
+		total := res.Total
 
 		for _, board := range boardList.Values {
 			d.StreamListItem(ctx, board)
@@ -114,7 +117,7 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			}
 		}
 
-		last = resp.StartAt + len(boardList.Values)
+		last = res.StartAt + len(boardList.Values)
 		if last >= total {
 			return nil, nil
 		}
@@ -134,7 +137,9 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, err
 	}
 
-	board, _, err := client.Board.GetBoard(int(boardId))
+	board, res, err := client.Board.GetBoard(int(boardId))
+	body, _ := io.ReadAll(res.Body)
+	plugin.Logger(ctx).Debug("jira_board.getBoard", "res_body", string(body))
 	if err != nil {
 		if isNotFoundError(err) {
 			return nil, nil

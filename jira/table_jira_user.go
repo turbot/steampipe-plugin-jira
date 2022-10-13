@@ -3,7 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -116,7 +116,7 @@ func listUsers(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 
 		users := new([]jira.User)
 		res, err := client.Do(req, users)
-		body, _ := ioutil.ReadAll(res.Body)
+		body, _ := io.ReadAll(res.Body)
 		plugin.Logger(ctx).Debug("jira_user.listUsers", "res_body", string(body))
 
 		if err != nil {

@@ -2,7 +2,7 @@ package jira
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
 
@@ -83,7 +83,7 @@ func listGlobalSettings(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydr
 
 	listGlobalSettings := new(GlobalSetting)
 	res, err := client.Do(req, listGlobalSettings)
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 	plugin.Logger(ctx).Debug("jira_global_setting.listGlobalSettings", "res_body", string(body))
 
 	if err != nil {

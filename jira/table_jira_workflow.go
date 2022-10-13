@@ -3,7 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -107,7 +107,7 @@ func listWorkflows(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDa
 
 		listResult := new(ListWorkflowResult)
 		res, err := client.Do(req, listResult)
-		body, _ := ioutil.ReadAll(res.Body)
+		body, _ := io.ReadAll(res.Body)
 		plugin.Logger(ctx).Debug("jira_workflow.listWorkflows", "res_body", string(body))
 
 		if err != nil {
@@ -158,7 +158,7 @@ func getWorkflow(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 
 	workflow := new(ListWorkflowResult)
 	res, err := client.Do(req, workflow)
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 	plugin.Logger(ctx).Debug("jira_workflow.getWorkflow", "res_body", string(body))
 
 	if err != nil {

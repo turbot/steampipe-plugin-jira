@@ -3,7 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"time"
 
 	"github.com/andygrunwald/go-jira"
@@ -123,7 +123,7 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 
 		listResult := new(ListSprintResult)
 		res, err := client.Do(req, listResult)
-		body, _ := ioutil.ReadAll(res.Body)
+		body, _ := io.ReadAll(res.Body)
 		plugin.Logger(ctx).Debug("jira_sprint.listSprints", "res_body", string(body))
 
 		if err != nil {

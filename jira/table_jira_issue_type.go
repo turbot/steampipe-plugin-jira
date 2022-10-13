@@ -3,7 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -119,7 +119,7 @@ func listIssueTypes(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 
 	issuesTypeResult := new([]ListIssuesTypeResult)
 	res, err := client.Do(req, issuesTypeResult)
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 	plugin.Logger(ctx).Debug("jira_issue_type.listIssueTypes", "res_body", string(body))
 
 	if err != nil {
@@ -160,7 +160,7 @@ func getIssueType(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	}
 
 	res, err := client.Do(req, issueType)
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 	plugin.Logger(ctx).Debug("jira_issue_type.getIssueType", "res_body", string(body))
 
 	if err != nil && isNotFoundError(err) {

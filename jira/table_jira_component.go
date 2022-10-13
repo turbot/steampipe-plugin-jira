@@ -3,7 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -161,7 +161,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 
 		listResult := new(ListComponentResult)
 		res, err := client.Do(req, listResult)
-		body, _ := ioutil.ReadAll(res.Body)
+		body, _ := io.ReadAll(res.Body)
 		plugin.Logger(ctx).Debug("jira_component.listComponents", "res_body", string(body))
 
 		if err != nil {
@@ -210,7 +210,7 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	result := new(Component)
 
 	res, err := client.Do(req, result)
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 	plugin.Logger(ctx).Debug("jira_component.getComponent", "res_body", string(body))
 
 	if err != nil {

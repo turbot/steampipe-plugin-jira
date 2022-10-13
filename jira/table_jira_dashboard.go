@@ -3,7 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
@@ -130,7 +130,7 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 
 		listResult := new(ListResult)
 		res, err := client.Do(req, listResult)
-		body, _ := ioutil.ReadAll(res.Body)
+		body, _ := io.ReadAll(res.Body)
 		plugin.Logger(ctx).Debug("jira_dashboard.listDashboards", "res_body", string(body))
 
 		if err != nil {
@@ -176,7 +176,7 @@ func getDashboard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	}
 
 	res, err := client.Do(req, dashboard)
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 	plugin.Logger(ctx).Debug("jira_dashboard.getDashboard", "res_body", string(body))
 
 	if err != nil {
