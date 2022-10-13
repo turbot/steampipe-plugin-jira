@@ -1,3 +1,9 @@
+## v0.6.1 [2022-10-13]
+
+_Bug fixes_
+
+- Not found errors are now handled correctly in `jira_backlog_issue`, `jira_component`, `jira_issue_type`, and `jira_sprint` tables.
+
 ## v0.6.0 [2022-09-26]
 
 _Bug fixes_
