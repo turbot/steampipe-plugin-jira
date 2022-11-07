@@ -83,7 +83,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "status_category",
-				Description: "The status category (Open, In Progress, Done) the ticket status belonngs",
+				Description: "The status category (Open, In Progress, Done) of the ticket.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Status.StatusCategory.Name"),
 			},
