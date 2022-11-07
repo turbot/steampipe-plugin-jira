@@ -40,6 +40,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "reporter_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "resolution_date", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "status_category", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "updated", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 			},
@@ -79,6 +80,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Description: "Json object containing important subfields info the issue.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Status.Name"),
+			},
+			{
+				Name:        "status_category",
+				Description: "The status category (Open, In Progress, Done) the ticket status belonngs",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Status.StatusCategory.Name"),
 			},
 			{
 				Name:        "epic_key",
