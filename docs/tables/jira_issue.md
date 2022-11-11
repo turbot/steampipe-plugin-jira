@@ -133,7 +133,7 @@ where
 #### List all possible status for each status_category for a speficic project
 
 ```sql
-select
+select distinct
   project_key,
   status_category,
   status
