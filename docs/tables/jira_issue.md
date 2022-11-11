@@ -98,7 +98,7 @@ The difference is that `status` is the custom name you define for a `status_cate
 
 For example, for `status_category` = `Done`, maybe in your workflow you defined possible statuses `Done` and `Wont Do`, both are `Done` status category that you can filter using that `status_category`. `status_category` is also useful when filtering across more than 1 project, as every project could be using their own workflow with different `status` names. 
 
-#### List all issues 'Done' (status_category)
+#### List all issues in status category 'Done'
 
 ```sql
 select
@@ -114,7 +114,7 @@ where
   status_category = 'Done';
 ```
 
-#### List all issues Done (status)
+#### List all issues in status Waiting for Support
 
 ```sql
 select
@@ -127,6 +127,20 @@ select
 from
   jira_issue
 where
-  status = 'Done' and 
-  status = 'Wont do' 
+  status = 'Waiting for support'
+```
+
+#### List all possible status for each status_category for a speficic project
+
+```sql
+select
+  project_key,
+  status_category,
+  status
+from
+  jira_issue
+where
+  project_key = 'PROJECT-KEY'
+order by
+  status_category
 ```
