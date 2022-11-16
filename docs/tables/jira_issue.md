@@ -91,13 +91,6 @@ where
   sprint_ids @> '2';
 ```
 
-### Status and Status Category
-You can use the field `status` or `status_category` to list issues in a particular workflow status. 
-
-The difference is that `status` is the custom name you define for a `status_category` in each Jira workflow that is fixed: `To do`, `In Progress`, and `Done`. Every `status` belongs to one of those `status_category`.
-
-For example, for `status_category` = `Done`, maybe in your workflow you defined possible statuses `Done` and `Wont Do`, both are `Done` status category that you can filter using that `status_category`. `status_category` is also useful when filtering across more than 1 project, as every project could be using their own workflow with different `status` names. 
-
 #### List all issues in status category 'Done'
 
 ```sql
