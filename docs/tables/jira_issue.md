@@ -90,3 +90,50 @@ from
 where
   sprint_ids @> '2';
 ```
+
+#### List all issues in status category 'Done'
+
+```sql
+select
+  id,
+  key,
+  summary,
+  status,
+  status_category,
+  assignee_display_name
+from
+  jira_issue
+where
+  status_category = 'Done';
+```
+
+#### List all issues in status Waiting for Support
+
+```sql
+select
+  id,
+  key,
+  summary,
+  status,
+  status_category,
+  assignee_display_name
+from
+  jira_issue
+where
+  status = 'Waiting for support';
+```
+
+#### List all possible status for each status_category for a speficic project
+
+```sql
+select distinct
+  project_key,
+  status_category,
+  status
+from
+  jira_issue
+where
+  project_key = 'PROJECT-KEY'
+order by
+  status_category;
+```
