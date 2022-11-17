@@ -120,7 +120,7 @@ select
 from
   jira_issue
 where
-  status = 'Waiting for support'
+  status = 'Waiting for support';
 ```
 
 #### List all possible status for each status_category for a speficic project
