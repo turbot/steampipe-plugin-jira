@@ -135,5 +135,5 @@ from
 where
   project_key = 'PROJECT-KEY'
 order by
-  status_category
+  status_category;
 ```
