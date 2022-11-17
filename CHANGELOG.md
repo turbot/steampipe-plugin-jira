@@ -1,3 +1,13 @@
+## v0.7.0 [2022-11-17]
+
+_Enhancements_
+
+- Added the `status_category` column to the `jira_issue` table. ([#69](https://github.com/turbot/steampipe-plugin-jira/pull/69)) (Thanks to [@gabrielsoltz](https://github.com/gabrielsoltz) for the contribution!)
+
+_Dependencies_
+
+- Recompiled plugin with [steampipe-plugin-sdk v4.1.8](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v418-2022-09-08) which increases the default open file limit. ([#70](https://github.com/turbot/steampipe-plugin-jira/pull/70))
+
 ## v0.6.1 [2022-10-13]
 
 _Bug fixes_
