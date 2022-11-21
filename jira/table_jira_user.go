@@ -26,6 +26,7 @@ func tableUser(_ context.Context) *plugin.Table {
 				// Limit concurrency to avoid a 429 too many requests error
 				Func:           getUserGroups,
 				MaxConcurrency: 50,
+				RetryConfig: 		&plugin.RetryConfig{ ShouldRetryErrorFunc: shouldRetryError([]string{"429"})},
 			},
 		},
 		Columns: []*plugin.Column{
@@ -155,12 +156,13 @@ func getUserGroups(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateDa
 	}
 
 	groups, _, err := client.User.GetGroups(user.AccountID)
+
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_user.getUserGroups", "api_error", err)
 		return nil, err
 	}
 
-	return groups, nil
+	return  groups, nil
 }
 
 //// TRANSFORM FUNCTION
