@@ -26,6 +26,7 @@ func tableUser(_ context.Context) *plugin.Table {
 				// Limit concurrency to avoid a 429 too many requests error
 				Func:           getUserGroups,
 				MaxConcurrency: 50,
+			},
 		},
 		Columns: []*plugin.Column{
 			{

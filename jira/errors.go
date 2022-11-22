@@ -2,7 +2,6 @@ package jira
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/v4/plugin"
@@ -18,9 +17,9 @@ func isBadRequestError(err error) bool {
 
 func shouldRetryError(retryErrors []string) plugin.ErrorPredicateWithContext {
 	return func(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData, err error) bool {
-		
+
 		if strings.Contains(err.Error(), "429") {
-			log.Printf("[WARN] Received Rate Limit Error")
+			plugin.Logger(ctx).Warn("Received Rate Limit Error")
 			return true
 		}
 		return false
