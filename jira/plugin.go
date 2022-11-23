@@ -12,9 +12,9 @@ const pluginName = "steampipe-plugin-jira"
 // Plugin creates this (jira) plugin
 func Plugin(ctx context.Context) *plugin.Plugin {
 	p := &plugin.Plugin{
-		Name:               pluginName,
-		DefaultTransform:   transform.FromCamel(),
-		DefaultRetryConfig: &plugin.RetryConfig{ShouldRetryErrorFunc: shouldRetryError([]string{"429"})},
+		Name:               		pluginName,
+		DefaultTransform:   		transform.FromCamel(),
+		DefaultRetryConfig: 		&plugin.RetryConfig{ShouldRetryErrorFunc: shouldRetryError([]string{"429"})},
 		ConnectionConfigSchema: &plugin.ConnectionConfigSchema{
 			NewInstance: ConfigInstance,
 			Schema:      ConfigSchema,

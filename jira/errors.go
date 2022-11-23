@@ -19,7 +19,7 @@ func shouldRetryError(retryErrors []string) plugin.ErrorPredicateWithContext {
 	return func(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData, err error) bool {
 
 		if strings.Contains(err.Error(), "429") {
-			plugin.Logger(ctx).Warn("Received Rate Limit Error")
+			plugin.Logger(ctx).Debug("jira_errors.shouldRetryError", "rate_limit_error", err)
 			return true
 		}
 		return false
