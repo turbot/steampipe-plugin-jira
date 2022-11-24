@@ -1,3 +1,9 @@
+## v0.8.0 [2022-11-24]
+
+_Enhancements_
+
+- Added support for `DefaultRetryConfig` configuration across all the tables to retry `429 Too Many Requests` (Rate Limiting) errors. ([#72](https://github.com/turbot/steampipe-plugin-jira/pull/72))
+
 ## v0.7.0 [2022-11-17]
 
 _Enhancements_
