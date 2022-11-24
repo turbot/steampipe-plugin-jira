@@ -155,6 +155,7 @@ func getUserGroups(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateDa
 	}
 
 	groups, _, err := client.User.GetGroups(user.AccountID)
+
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_user.getUserGroups", "api_error", err)
 		return nil, err
