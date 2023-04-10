@@ -6,10 +6,10 @@ import (
 	"io"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
 //// TABLE DEFINITION
@@ -143,11 +143,11 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	}
 
 	query := ""
-	if d.KeyColumnQualString("key") != "" {
-		query = fmt.Sprintf("&%skeys=%s", query, d.KeyColumnQualString("key"))
+	if d.EqualsQualString("key") != "" {
+		query = fmt.Sprintf("&%skeys=%s", query, d.EqualsQualString("key"))
 	}
-	if d.KeyColumnQualString("project_type_key") != "" {
-		query = fmt.Sprintf("&%stypeKey=%s", query, d.KeyColumnQualString("project_type_key"))
+	if d.EqualsQualString("project_type_key") != "" {
+		query = fmt.Sprintf("&%stypeKey=%s", query, d.EqualsQualString("project_type_key"))
 	}
 
 	last := 0
@@ -180,7 +180,7 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 		for _, project := range projectList.Values {
 			d.StreamListItem(ctx, project)
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
-			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
 		}
@@ -199,7 +199,7 @@ func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 	if h.Item != nil {
 		projectId = h.Item.(Project).ID
 	} else {
-		projectId = d.KeyColumnQuals["id"].GetStringValue()
+		projectId = d.EqualsQuals["id"].GetStringValue()
 	}
 
 	if projectId == "" {

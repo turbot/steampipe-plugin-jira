@@ -5,10 +5,10 @@ import (
 	"io"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
 //// TABLE DEFINITION
@@ -203,6 +203,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromField("Fields.Updated").Transform(convertJiraTime),
 			},
+			// {
+			// 	Name:        "raw",
+			// 	Description: "Raw output.",
+			// 	Type:        proto.ColumnType_JSON,
+			// 	Transform:   transform.FromValue(),
+			// },
 
 			// JSON fields
 			{
@@ -277,13 +283,15 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		for _, issue := range issues {
+			plugin.Logger(ctx).Trace("Issue output.......", issue)
+			plugin.Logger(ctx).Trace("Issue names output----", issue.Names)
 			keys := map[string]string{
 				"epic":   getFieldKey(ctx, d, issue.Names, "Epic Link"),
 				"sprint": getFieldKey(ctx, d, issue.Names, "Sprint"),
 			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
-			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
 		}
@@ -303,8 +311,8 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	logger := plugin.Logger(ctx)
 	logger.Trace("getIssue")
 
-	issueId := d.KeyColumnQuals["id"].GetStringValue()
-	key := d.KeyColumnQuals["key"].GetStringValue()
+	issueId := d.EqualsQuals["id"].GetStringValue()
+	key := d.EqualsQuals["key"].GetStringValue()
 
 	client, err := connect(ctx, d)
 	if err != nil {
@@ -403,6 +411,8 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 
 // getFieldKey:: get key for unknown expanded fields
 func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]string, keyName string) string {
+
+	plugin.Logger(ctx).Trace("Check for keyName", names)
 	cacheKey := "issue-" + keyName
 	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
 		return cachedData.(string)

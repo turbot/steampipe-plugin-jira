@@ -6,10 +6,10 @@ import (
 	"io"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
 //// TABLE DEFINITION
@@ -259,7 +259,7 @@ func listBacklogIssues(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		for _, issue := range listIssuesResult.Issues {
 			d.StreamListItem(ctx, BacklogIssueInfo{issue, board.ID, board.Name, keys})
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
-			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
 		}

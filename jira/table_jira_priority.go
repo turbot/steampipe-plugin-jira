@@ -6,10 +6,10 @@ import (
 	"io"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
 //// TABLE DEFINITION
@@ -98,7 +98,7 @@ func listPriorities(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 	for _, priority := range *priorities {
 		d.StreamListItem(ctx, priority)
 		// Context may get cancelled due to manual cancellation or if the limit has been reached
-		if d.QueryStatus.RowsRemaining(ctx) == 0 {
+		if d.RowsRemaining(ctx) == 0 {
 			return nil, nil
 		}
 	}
@@ -114,7 +114,7 @@ func getPriority(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 		plugin.Logger(ctx).Error("jira_priority.getPriority", "connection_error", err)
 		return nil, err
 	}
-	priorityId := d.KeyColumnQuals["id"].GetStringValue()
+	priorityId := d.EqualsQuals["id"].GetStringValue()
 
 	// Return nil, if no input provided
 	if priorityId == "" {

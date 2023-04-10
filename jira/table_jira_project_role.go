@@ -5,10 +5,10 @@ import (
 	"io"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
 //// TABLE DEFINITION
@@ -90,7 +90,7 @@ func listProjectRoles(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrat
 	for _, role := range *roles {
 		d.StreamListItem(ctx, role)
 		// Context may get cancelled due to manual cancellation or if the limit has been reached
-		if d.QueryStatus.RowsRemaining(ctx) == 0 {
+		if d.RowsRemaining(ctx) == 0 {
 			return nil, nil
 		}
 	}
@@ -101,7 +101,7 @@ func listProjectRoles(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrat
 //// HYDRATE FUNCTION
 
 func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	roleId := d.KeyColumnQuals["id"].GetInt64Value()
+	roleId := d.EqualsQuals["id"].GetInt64Value()
 
 	client, err := connect(ctx, d)
 	if err != nil {

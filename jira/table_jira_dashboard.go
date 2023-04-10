@@ -6,10 +6,10 @@ import (
 	"io"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
 //// TABLE DEFINITION
@@ -141,7 +141,7 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 		for _, dashboard := range listResult.Values {
 			d.StreamListItem(ctx, dashboard)
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
-			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
 		}
@@ -156,7 +156,7 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 //// HDRATE FUNCTIONS
 
 func getDashboard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	dashboardId := d.KeyColumnQuals["id"].GetStringValue()
+	dashboardId := d.EqualsQuals["id"].GetStringValue()
 
 	if dashboardId == "" {
 		return nil, nil

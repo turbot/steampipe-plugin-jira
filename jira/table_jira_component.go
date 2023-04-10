@@ -6,10 +6,10 @@ import (
 	"io"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/turbot/steampipe-plugin-sdk/v4/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin/transform"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 
-	"github.com/turbot/steampipe-plugin-sdk/v4/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
 //// TABLE DEFINITION
@@ -176,7 +176,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 			d.StreamListItem(ctx, component)
 
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
-			if d.QueryStatus.RowsRemaining(ctx) == 0 {
+			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
 		}
@@ -191,7 +191,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 //// HYDRATE FUNCTIONS
 
 func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	componentId := d.KeyColumnQuals["id"].GetStringValue()
+	componentId := d.EqualsQuals["id"].GetStringValue()
 
 	client, err := connect(ctx, d)
 	if err != nil {
