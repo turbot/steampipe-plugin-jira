@@ -143,11 +143,11 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	}
 
 	query := ""
-	if d.KeyColumnQualString("key") != "" {
-		query = fmt.Sprintf("&%skeys=%s", query, d.KeyColumnQualString("key"))
+	if d.EqualsQualString("key") != "" {
+		query = fmt.Sprintf("&%skeys=%s", query, d.EqualsQualString("key"))
 	}
-	if d.KeyColumnQualString("project_type_key") != "" {
-		query = fmt.Sprintf("&%stypeKey=%s", query, d.KeyColumnQualString("project_type_key"))
+	if d.EqualsQualString("project_type_key") != "" {
+		query = fmt.Sprintf("&%stypeKey=%s", query, d.EqualsQualString("project_type_key"))
 	}
 
 	last := 0
