@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -21,9 +22,10 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 		return cachedData.(*jira.Client), nil
 	}
 
-	// Start with an empty Turbot config
-	tokenProvider := jira.BasicAuthTransport{}
-	var baseUrl, username, token string
+	// Default to the env var settings
+	baseUrl := os.Getenv("JIRA_URL")
+	username := os.Getenv("JIRA_USER")
+	token := os.Getenv("JIRA_TOKEN")
 
 	// Prefer config options given in Steampipe
 	jiraConfig := GetConfig(d.Connection)
@@ -44,12 +46,14 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if username == "" {
 		return nil, errors.New("'username' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
-	tokenProvider.Username = username
-
 	if token == "" {
 		return nil, errors.New("'token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
-	tokenProvider.Password = token
+
+	tokenProvider := jira.BasicAuthTransport{
+		Username: username,
+		Password: token,
+	}
 
 	// Create the client
 	client, err := jira.NewClient(tokenProvider.Client(), baseUrl)
@@ -64,7 +68,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	return client, nil
 }
 
-//// Constants
+// // Constants
 const (
 	ColumnDescriptionTitle = "Title of the resource."
 )

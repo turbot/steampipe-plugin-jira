@@ -78,6 +78,12 @@ connection "jira" {
 - `username` - Email address of agent user who have permission to access the API.
 - `token` - [API token](https://id.atlassian.com/manage-profile/security/api-tokens) for user's Atlassian account.
 
+Environment variables are also available as an alternate configuration method:
+
+- `JIRA_URL`
+- `JIRA_USER`
+- `JIRA_TOKEN`
+
 ## Get involved
 
 - Open source: https://github.com/turbot/steampipe-plugin-jira
