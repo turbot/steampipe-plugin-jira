@@ -91,7 +91,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "epic_key",
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
-				Hydrate:     getIssue,
 				Transform:   transform.FromP(extractRequiredField, "epic"),
 			},
 			{
@@ -308,19 +307,12 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 //// HYDRATE FUNCTION
 
-func getIssue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	logger := plugin.Logger(ctx)
 	logger.Trace("getIssue")
 
-	var issueId, key string
-	if h.Item != nil {
-		issueInfo := h.Item.(IssueInfo)
-		issueId = issueInfo.ID
-		key = issueInfo.Key
-	} else {
-		issueId = d.EqualsQuals["id"].GetStringValue()
-		key = d.EqualsQuals["key"].GetStringValue()
-	}
+	issueId := d.EqualsQuals["id"].GetStringValue()
+	key := d.EqualsQuals["key"].GetStringValue()
 
 	client, err := connect(ctx, d)
 	if err != nil {
