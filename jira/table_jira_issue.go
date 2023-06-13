@@ -311,8 +311,8 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	logger := plugin.Logger(ctx)
 	logger.Trace("getIssue")
 
-	issueId := d.EqualsQuals["id"].GetStringValue()
-	key := d.EqualsQuals["key"].GetStringValue()
+	issueId := d.EqualsQualString("id")
+	key := d.EqualsQualString("key")
 
 	client, err := connect(ctx, d)
 	if err != nil {
