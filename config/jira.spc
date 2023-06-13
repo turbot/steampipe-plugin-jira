@@ -2,7 +2,7 @@ connection "jira" {
   plugin = "jira"
 
   # The baseUrl of your Jira Instance API
-  # Can also be set with the `JIRA_URL` environment variable.
+  # Can also be set with the JIRA_URL environment variable.
   # base_url = "https://your-domain.atlassian.net/"
 
   # The user name to access the jira cloud instance
