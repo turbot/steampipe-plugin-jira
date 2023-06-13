@@ -3,6 +3,9 @@ package jira
 import (
 	"context"
 	"io"
+	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -91,7 +94,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "epic_key",
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
-				Hydrate:     getIssue,
 				Transform:   transform.FromP(extractRequiredField, "epic"),
 			},
 			{
@@ -244,11 +246,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	client, err := connect(ctx, d)
-	if err != nil {
-		plugin.Logger(ctx).Error("jira_issue.getIssue", "connection_error", err)
-		return nil, err
-	}
 
 	last := 0
 
@@ -271,7 +268,9 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
 
 	for {
-		issues, res, err := client.Issue.SearchWithContext(ctx, jql, &options)
+		searchResult, res, err := SearchWithContext(ctx, d, jql, &options)
+		issues := searchResult.Issues
+		names := searchResult.Names
 		body, _ := io.ReadAll(res.Body)
 		plugin.Logger(ctx).Debug("jira_issue.listIssues", "res_body", string(body))
 
@@ -285,10 +284,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 		for _, issue := range issues {
 			plugin.Logger(ctx).Trace("Issue output.......", issue)
-			plugin.Logger(ctx).Trace("Issue names output----", issue.Names)
+			plugin.Logger(ctx).Trace("Issue names output----", names)
 			keys := map[string]string{
-				"epic":   getFieldKey(ctx, d, issue.Names, "Epic Link"),
-				"sprint": getFieldKey(ctx, d, issue.Names, "Sprint"),
+				"epic":   getFieldKey(ctx, d, names, "Epic Link"),
+				"sprint": getFieldKey(ctx, d, names, "Sprint"),
 			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
@@ -312,15 +311,8 @@ func getIssue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (
 	logger := plugin.Logger(ctx)
 	logger.Trace("getIssue")
 
-	var issueId, key string
-	if h.Item != nil {
-		issueInfo := h.Item.(IssueInfo)
-		issueId = issueInfo.ID
-		key = issueInfo.Key
-	} else {
-		issueId = d.EqualsQuals["id"].GetStringValue()
-		key = d.EqualsQuals["key"].GetStringValue()
-	}
+	issueId := d.EqualsQuals["id"].GetStringValue()
+	key := d.EqualsQuals["key"].GetStringValue()
 
 	client, err := connect(ctx, d)
 	if err != nil {
@@ -435,6 +427,56 @@ func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]stri
 	return ""
 }
 
+func SearchWithContext(ctx context.Context, d *plugin.QueryData, jql string, options *jira.SearchOptions) (*searchResult, *jira.Response, error) {
+	u := url.URL{
+		Path: "rest/api/2/search",
+	}
+	uv := url.Values{}
+	if jql != "" {
+		uv.Add("jql", jql)
+	}
+
+	if options != nil {
+		if options.StartAt != 0 {
+			uv.Add("startAt", strconv.Itoa(options.StartAt))
+		}
+		if options.MaxResults != 0 {
+			uv.Add("maxResults", strconv.Itoa(options.MaxResults))
+		}
+		if options.Expand != "" {
+			uv.Add("expand", options.Expand)
+		}
+		if strings.Join(options.Fields, ",") != "" {
+			uv.Add("fields", strings.Join(options.Fields, ","))
+		}
+		if options.ValidateQuery != "" {
+			uv.Add("validateQuery", options.ValidateQuery)
+		}
+	}
+
+	u.RawQuery = uv.Encode()
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_backlog_issue.listBacklogIssues", "connection_error", err)
+		return nil, nil, err
+	}
+
+	req, err := client.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	v := new(searchResult)
+	resp, err := client.Do(req, v)
+	body, _ := io.ReadAll(resp.Body)
+	plugin.Logger(ctx).Debug("jira_epic.listEpics", "res_body", string(body))
+	if err != nil {
+		err = jira.NewJiraError(resp, err)
+	}
+	return v, resp, err
+}
+
 //// Required Structs
 
 type ListIssuesResult struct {
@@ -449,4 +491,12 @@ type ListIssuesResult struct {
 type IssueInfo struct {
 	jira.Issue
 	Keys map[string]string
+}
+
+type searchResult struct {
+	Issues     []jira.Issue      `json:"issues" structs:"issues"`
+	StartAt    int               `json:"startAt" structs:"startAt"`
+	MaxResults int               `json:"maxResults" structs:"maxResults"`
+	Total      int               `json:"total" structs:"total"`
+	Names      map[string]string `json:"names,omitempty" structs:"names,omitempty"`
 }
