@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -206,12 +205,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromField("Fields.Updated").Transform(convertJiraTime),
 			},
-			// {
-			// 	Name:        "raw",
-			// 	Description: "Raw output.",
-			// 	Type:        proto.ColumnType_JSON,
-			// 	Transform:   transform.FromValue(),
-			// },
 
 			// JSON fields
 			{
@@ -268,7 +261,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
 
 	for {
-		searchResult, res, err := SearchWithContext(ctx, d, jql, &options)
+		searchResult, res, err := searchWithContext(ctx, d, jql, &options)
 		issues := searchResult.Issues
 		names := searchResult.Names
 		body, _ := io.ReadAll(res.Body)
@@ -427,7 +420,7 @@ func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]stri
 	return ""
 }
 
-func SearchWithContext(ctx context.Context, d *plugin.QueryData, jql string, options *jira.SearchOptions) (*searchResult, *jira.Response, error) {
+func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, options *jira.SearchOptions) (*searchResult, *jira.Response, error) {
 	u := url.URL{
 		Path: "rest/api/2/search",
 	}
@@ -436,29 +429,20 @@ func SearchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 		uv.Add("jql", jql)
 	}
 
-	if options != nil {
-		if options.StartAt != 0 {
-			uv.Add("startAt", strconv.Itoa(options.StartAt))
-		}
-		if options.MaxResults != 0 {
-			uv.Add("maxResults", strconv.Itoa(options.MaxResults))
-		}
-		if options.Expand != "" {
-			uv.Add("expand", options.Expand)
-		}
-		if strings.Join(options.Fields, ",") != "" {
-			uv.Add("fields", strings.Join(options.Fields, ","))
-		}
-		if options.ValidateQuery != "" {
-			uv.Add("validateQuery", options.ValidateQuery)
-		}
+	// Append the values of options to the path parameters
+	if options.StartAt != 0 {
+		uv.Add("startAt", strconv.Itoa(options.StartAt))
 	}
+	if options.MaxResults != 0 {
+		uv.Add("maxResults", strconv.Itoa(options.MaxResults))
+	}
+	uv.Add("expand", options.Expand)
 
 	u.RawQuery = uv.Encode()
 
 	client, err := connect(ctx, d)
 	if err != nil {
-		plugin.Logger(ctx).Error("jira_backlog_issue.listBacklogIssues", "connection_error", err)
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithContext", "connection_error", err)
 		return nil, nil, err
 	}
 
@@ -470,7 +454,7 @@ func SearchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 	v := new(searchResult)
 	resp, err := client.Do(req, v)
 	body, _ := io.ReadAll(resp.Body)
-	plugin.Logger(ctx).Debug("jira_epic.listEpics", "res_body", string(body))
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithContext", "res_body", string(body))
 	if err != nil {
 		err = jira.NewJiraError(resp, err)
 	}
