@@ -3,6 +3,8 @@ package jira
 import (
 	"context"
 	"io"
+	"net/url"
+	"strconv"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -203,12 +205,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_TIMESTAMP,
 				Transform:   transform.FromField("Fields.Updated").Transform(convertJiraTime),
 			},
-			// {
-			// 	Name:        "raw",
-			// 	Description: "Raw output.",
-			// 	Type:        proto.ColumnType_JSON,
-			// 	Transform:   transform.FromValue(),
-			// },
 
 			// JSON fields
 			{
@@ -243,11 +239,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	client, err := connect(ctx, d)
-	if err != nil {
-		plugin.Logger(ctx).Error("jira_issue.getIssue", "connection_error", err)
-		return nil, err
-	}
 
 	last := 0
 
@@ -270,7 +261,9 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
 
 	for {
-		issues, res, err := client.Issue.SearchWithContext(ctx, jql, &options)
+		searchResult, res, err := searchWithContext(ctx, d, jql, &options)
+		issues := searchResult.Issues
+		names := searchResult.Names
 		body, _ := io.ReadAll(res.Body)
 		plugin.Logger(ctx).Debug("jira_issue.listIssues", "res_body", string(body))
 
@@ -283,11 +276,11 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		for _, issue := range issues {
-			plugin.Logger(ctx).Trace("Issue output.......", issue)
-			plugin.Logger(ctx).Trace("Issue names output----", issue.Names)
+			plugin.Logger(ctx).Debug("Issue output:", issue)
+			plugin.Logger(ctx).Debug("Issue names output:", names)
 			keys := map[string]string{
-				"epic":   getFieldKey(ctx, d, issue.Names, "Epic Link"),
-				"sprint": getFieldKey(ctx, d, issue.Names, "Sprint"),
+				"epic":   getFieldKey(ctx, d, names, "Epic Link"),
+				"sprint": getFieldKey(ctx, d, names, "Sprint"),
 			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
@@ -309,10 +302,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	logger := plugin.Logger(ctx)
-	logger.Trace("getIssue")
+	logger.Debug("getIssue")
 
-	issueId := d.EqualsQuals["id"].GetStringValue()
-	key := d.EqualsQuals["key"].GetStringValue()
+	issueId := d.EqualsQualString("id")
+	key := d.EqualsQualString("key")
 
 	client, err := connect(ctx, d)
 	if err != nil {
@@ -412,7 +405,7 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 // getFieldKey:: get key for unknown expanded fields
 func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]string, keyName string) string {
 
-	plugin.Logger(ctx).Trace("Check for keyName", names)
+	plugin.Logger(ctx).Debug("Check for keyName", names)
 	cacheKey := "issue-" + keyName
 	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
 		return cachedData.(string)
@@ -425,6 +418,47 @@ func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]stri
 		}
 	}
 	return ""
+}
+
+func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, options *jira.SearchOptions) (*searchResult, *jira.Response, error) {
+	u := url.URL{
+		Path: "rest/api/2/search",
+	}
+	uv := url.Values{}
+	if jql != "" {
+		uv.Add("jql", jql)
+	}
+
+	// Append the values of options to the path parameters
+	if options.StartAt != 0 {
+		uv.Add("startAt", strconv.Itoa(options.StartAt))
+	}
+	if options.MaxResults != 0 {
+		uv.Add("maxResults", strconv.Itoa(options.MaxResults))
+	}
+	uv.Add("expand", options.Expand)
+
+	u.RawQuery = uv.Encode()
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithContext", "connection_error", err)
+		return nil, nil, err
+	}
+
+	req, err := client.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	v := new(searchResult)
+	resp, err := client.Do(req, v)
+	body, _ := io.ReadAll(resp.Body)
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithContext", "res_body", string(body))
+	if err != nil {
+		err = jira.NewJiraError(resp, err)
+	}
+	return v, resp, err
 }
 
 //// Required Structs
@@ -441,4 +475,12 @@ type ListIssuesResult struct {
 type IssueInfo struct {
 	jira.Issue
 	Keys map[string]string
+}
+
+type searchResult struct {
+	Issues     []jira.Issue      `json:"issues" structs:"issues"`
+	StartAt    int               `json:"startAt" structs:"startAt"`
+	MaxResults int               `json:"maxResults" structs:"maxResults"`
+	Total      int               `json:"total" structs:"total"`
+	Names      map[string]string `json:"names,omitempty" structs:"names,omitempty"`
 }

@@ -133,7 +133,7 @@ func listEpics(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) 
 
 func getEpic(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	logger := plugin.Logger(ctx)
-	logger.Trace("getEpic")
+	logger.Debug("getEpic")
 
 	epicId := d.EqualsQuals["id"].GetInt64Value()
 	epicKey := d.EqualsQuals["key"].GetStringValue()
