@@ -6,7 +6,7 @@ _Enhancements_
 
 _Bug fixes_
 
-- Fixed the `epic_key` column in `jira_issue` table to consistently return data instead of `null`. ([#80](https://github.com/turbot/steampipe-plugin-jira/pull/80))
+- Fixed the `epic_key` column in `jira_issue` table to consistently return data instead of `null` when key columns are not passed in the `where` clause. ([#80](https://github.com/turbot/steampipe-plugin-jira/pull/80))
 
 ## v0.9.0 [2023-04-10]
 
