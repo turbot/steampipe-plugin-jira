@@ -11,16 +11,62 @@ Use SQL to query infrastructure including servers, networks, facilities and more
 
 ## Quick start
 
-Install the plugin with [Steampipe](https://steampipe.io):
+### Install
 
-```shell
+Download and install the latest Jira plugin:
+
+```bash
 steampipe plugin install jira
 ```
 
-Run a query:
+Configure your [credentials](https://hub.steampipe.io/plugins/turbot/jira#credentials) and [config file](https://hub.steampipe.io/plugins/turbot/jira#configuration).
+
+Configure your account details in `~/.steampipe/config/jira.spc`:
+
+```hcl
+connection "jira" {
+  plugin = jira
+
+  # Authentication information
+  base_url = "https://your-domain.atlassian.net/"
+  username = "abcd@xyz.com"
+  token    = "8WqcdT0rvIZpCjtDqReF48B1"
+}
+```
+
+Or through environment variables:
+
+```sh
+export JIRA_URL=https://your-domain.atlassian.net/
+export JIRA_USER=abcd@xyz.com
+export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
+```
+
+Run steampipe:
+
+```shell
+steampipe query
+```
+
+List users in your Jira account:
 
 ```sql
-select name, id, summary from jira_epic;
+select
+  display_name,
+  account_type as type,
+  active as status,
+  account_id
+from
+  jira_user;
+```
+
+```
++-------------------------------+-----------+--------+-----------------------------+
+| display_name                  | type      | status | account_id                  |
++-------------------------------+-----------+--------+-----------------------------+
+| Confluence Analytics (System) | app       | true   | 557058:cbc04d7be567aa5332c6 |
+| John Smyth                    | atlassian | true   | 1f2e1d34e0e56a001ea44fc1    |
++-------------------------------+-----------+--------+-----------------------------+
 ```
 
 ## Developing

@@ -17,7 +17,7 @@ track, and release great software.
 
 [Steampipe](https://steampipe.io) is an open source CLI to instantly query cloud APIs using SQL.
 
-For example:
+List users in your Jira account:
 
 ```sql
 select
@@ -67,19 +67,19 @@ Installing the latest jira plugin will create a config file (`~/.steampipe/confi
 
 ```hcl
 connection "jira" {
-  plugin   = "jira"
+  plugin = "jira"
 
   # The baseUrl of your Jira Instance API
-  # Can also be set with the `JIRA_URL` environment variable.
-  base_url = "https://your-domain.atlassian.net/"
+  # Can also be set with the JIRA_URL environment variable.
+  # base_url = "https://your-domain.atlassian.net/"
 
   # The user name to access the jira cloud instance
   # Can also be set with the `JIRA_USER` environment variable.
-  username = "abcd@xyz.com"
+  # username = "abcd@xyz.com"
 
   # Access Token for which to use for the API
   # Can also be set with the `JIRA_TOKEN` environment variable.
-  token    = "wOABk1jLlKktmtg43ZHNh9D12"
+  # token = "8WqcdT0rvIZpCjtDqReF48B1"
 }
 ```
 
@@ -87,11 +87,13 @@ connection "jira" {
 - `username` - Email address of agent user who have permission to access the API.
 - `token` - [API token](https://id.atlassian.com/manage-profile/security/api-tokens) for user's Atlassian account.
 
-Environment variables are also available as an alternate configuration method:
+Alternatively, you can also use the standard Jira environment variables to obtain credentials **only if other arguments (`base_url`, `username` and `token`) are not specified** in the connection:
 
-- `JIRA_URL`
-- `JIRA_USER`
-- `JIRA_TOKEN`
+```sh
+export JIRA_URL=https://your-domain.atlassian.net/
+export JIRA_USER=abcd@xyz.com
+export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
+```
 
 ## Get involved
 
