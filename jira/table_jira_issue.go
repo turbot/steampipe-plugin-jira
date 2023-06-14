@@ -283,8 +283,8 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		for _, issue := range issues {
-			plugin.Logger(ctx).Trace("Issue output.......", issue)
-			plugin.Logger(ctx).Trace("Issue names output----", names)
+			plugin.Logger(ctx).Debug("Issue output:", issue)
+			plugin.Logger(ctx).Debug("Issue names output:", names)
 			keys := map[string]string{
 				"epic":   getFieldKey(ctx, d, names, "Epic Link"),
 				"sprint": getFieldKey(ctx, d, names, "Sprint"),
@@ -309,7 +309,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	logger := plugin.Logger(ctx)
-	logger.Trace("getIssue")
+	logger.Debug("getIssue")
 
 	issueId := d.EqualsQualString("id")
 	key := d.EqualsQualString("key")
@@ -412,7 +412,7 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 // getFieldKey:: get key for unknown expanded fields
 func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]string, keyName string) string {
 
-	plugin.Logger(ctx).Trace("Check for keyName", names)
+	plugin.Logger(ctx).Debug("Check for keyName", names)
 	cacheKey := "issue-" + keyName
 	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
 		return cachedData.(string)
