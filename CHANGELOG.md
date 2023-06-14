@@ -1,3 +1,13 @@
+## v0.10.0 [2023-06-14]
+
+_Enhancements_
+
+- Added `JIRA_URL`, `JIRA_USER` and `JIRA_TOKEN` environment variables for setting `base_url`, `username` and `token` config arguments respectively. ([#79](https://github.com/turbot/steampipe-plugin-jira/pull/79))
+
+_Bug fixes_
+
+- Fixed the `epic_key` column in `jira_issue` table to consistently return data instead of `null`. ([#80](https://github.com/turbot/steampipe-plugin-jira/pull/80))
+
 ## v0.9.0 [2023-04-10]
 
 _Dependencies_
