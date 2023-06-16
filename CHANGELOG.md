@@ -1,3 +1,9 @@
+## v0.10.1 [2023-06-16]
+
+_Bug fixes_
+
+- Fixed pagination in `jira_issue` table to list all the issues correctly. ([#82](https://github.com/turbot/steampipe-plugin-jira/pull/82))
+
 ## v0.10.0 [2023-06-14]
 
 _Enhancements_
