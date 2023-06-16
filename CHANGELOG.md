@@ -2,7 +2,7 @@
 
 _Bug fixes_
 
-- Fixed pagination in `jira_issue` table to list all the issues correctly. ([#82](https://github.com/turbot/steampipe-plugin-jira/pull/82))
+- Fixed pagination in the `jira_issue` table to avoid the truncation of the result set. ([#82](https://github.com/turbot/steampipe-plugin-jira/pull/82))
 
 ## v0.10.0 [2023-06-14]
 
