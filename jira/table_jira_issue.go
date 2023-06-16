@@ -289,8 +289,8 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			}
 		}
 
-		last = res.StartAt + len(issues)
-		if last >= res.Total {
+		last = searchResult.StartAt + len(issues)
+		if last >= searchResult.Total {
 			return nil, nil
 		} else {
 			options.StartAt = last
