@@ -6,7 +6,7 @@ Use SQL to query infrastructure including servers, networks, facilities and more
 
 - **[Get started →](https://hub.steampipe.io/plugins/turbot/jira)**
 - Documentation: [Table definitions & examples](https://hub.steampipe.io/plugins/turbot/jira/tables)
-- Community: [Slack Channel](https://steampipe.io/community/join)
+- Community: [Join #steampipe on Slack →](https://turbot.com/community/join)
 - Get involved: [Issues](https://github.com/turbot/steampipe-plugin-jira/issues)
 
 ## Quick start
