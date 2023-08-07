@@ -75,6 +75,7 @@ connection "jira" {
 
   # The user name to access the jira cloud instance
   # Can also be set with the `JIRA_USER` environment variable.
+  # Leave it empty if you are using a Personal Access Token (PAT)
   # username = "abcd@xyz.com"
 
   # Access Token for which to use for the API
@@ -84,7 +85,7 @@ connection "jira" {
 ```
 
 - `base_url` - The site url of your attlassian jira subscription.
-- `username` - Email address of agent user who have permission to access the API.
+- `username` - Email address of agent user who have permission to access the API. Leave the it empty if you are using a Personal Access Token (PAT) on a [self-hosted Jira instance](https://github.com/andygrunwald/go-jira/#bearer---personal-access-tokens-self-hosted-jira).
 - `token` - [API token](https://id.atlassian.com/manage-profile/security/api-tokens) for user's Atlassian account.
 
 Alternatively, you can also use the standard Jira environment variables to obtain credentials **only if other arguments (`base_url`, `username` and `token`) are not specified** in the connection:

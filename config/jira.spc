@@ -7,6 +7,7 @@ connection "jira" {
 
   # The user name to access the jira cloud instance
   # Can also be set with the `JIRA_USER` environment variable.
+  # Leave it empty if you are using a Personal Access Token (PAT)
   # username = "abcd@xyz.com"
 
   # Access Token for which to use for the API

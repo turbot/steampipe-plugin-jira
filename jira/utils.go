@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andygrunwald/go-jira"
+	jira "github.com/andygrunwald/go-jira"
+	on_premise "github.com/andygrunwald/go-jira/v2/onpremise"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
@@ -43,20 +44,25 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if baseUrl == "" {
 		return nil, errors.New("'base_url' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
-	if username == "" {
-		return nil, errors.New("'username' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
-	}
 	if token == "" {
 		return nil, errors.New("'token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
 
-	tokenProvider := jira.BasicAuthTransport{
-		Username: username,
-		Password: token,
+	var client *jira.Client
+	var err error
+
+	if username == "" {
+		// If the username is empty, let's assume the user is using a PAT
+		tokenProvider := on_premise.BearerAuthTransport{Token: token}
+		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
+	} else {
+		tokenProvider := jira.BasicAuthTransport{
+			Username: username,
+			Password: token,
+		}
+		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
 	}
 
-	// Create the client
-	client, err := jira.NewClient(tokenProvider.Client(), baseUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Jira client: %s", err.Error())
 	}

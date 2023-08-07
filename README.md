@@ -21,6 +21,9 @@ steampipe plugin install jira
 
 Configure your [credentials](https://hub.steampipe.io/plugins/turbot/jira#credentials) and [config file](https://hub.steampipe.io/plugins/turbot/jira#configuration).
 
+> Leave the username empty if you are using a Personal Access Token (PAT) on a
+[self-hosted Jira instance](https://github.com/andygrunwald/go-jira/#bearer---personal-access-tokens-self-hosted-jira).
+
 Configure your account details in `~/.steampipe/config/jira.spc`:
 
 ```hcl
