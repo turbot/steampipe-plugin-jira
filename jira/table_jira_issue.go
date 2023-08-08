@@ -369,8 +369,9 @@ func extractSprintIds(ctx context.Context, d *transform.TransformData) (interfac
 	}
 	var sprintIds []interface{}
 	for _, item := range d.Value.([]interface{}) {
-		sprint := item.(map[string]interface{})
-		sprintIds = append(sprintIds, sprint["id"])
+		if sprint, ok := item.(map[string]interface{}); ok {
+			sprintIds = append(sprintIds, sprint["id"])
+		}
 	}
 
 	return sprintIds, nil
@@ -381,8 +382,9 @@ func extractSprintNames(ctx context.Context, d *transform.TransformData) (interf
 	}
 	var sprintNames []interface{}
 	for _, item := range d.Value.([]interface{}) {
-		sprint := item.(map[string]interface{})
-		sprintNames = append(sprintNames, sprint["name"])
+		if sprint, ok := item.(map[string]interface{}); ok {
+			sprintNames = append(sprintNames, sprint["name"])
+		}
 	}
 
 	return sprintNames, nil
