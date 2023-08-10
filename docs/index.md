@@ -75,18 +75,24 @@ connection "jira" {
 
   # The user name to access the jira cloud instance
   # Can also be set with the `JIRA_USER` environment variable.
-  # Leave it empty if you are using a Personal Access Token (PAT)
   # username = "abcd@xyz.com"
 
   # Access Token for which to use for the API
   # Can also be set with the `JIRA_TOKEN` environment variable.
+  # You should leave it empty if you are using a Personal Access Token (PAT)
   # token = "8WqcdT0rvIZpCjtDqReF48B1"
+
+  # Personal Access Token for which to use for the API.
+  # This one isused in self-hosted Jira instances.
+  # Can also be set with the `JIRA_PERSONAL_ACCESS_TOKEN` environment variable.
+  # personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 }
 ```
 
 - `base_url` - The site url of your attlassian jira subscription.
-- `username` - Email address of agent user who have permission to access the API. Leave the it empty if you are using a Personal Access Token (PAT) on a [self-hosted Jira instance](https://github.com/andygrunwald/go-jira/#bearer---personal-access-tokens-self-hosted-jira).
+- `username` - Email address of agent user who have permission to access the API.
 - `token` - [API token](https://id.atlassian.com/manage-profile/security/api-tokens) for user's Atlassian account.
+- `personal_access_token` - [API PAT](https://confluence.atlassian.com/enterprise/using-personal-access-tokens-1026032365.html) for self hosted Jira instances.
 
 Alternatively, you can also use the standard Jira environment variables to obtain credentials **only if other arguments (`base_url`, `username` and `token`) are not specified** in the connection:
 
@@ -94,6 +100,7 @@ Alternatively, you can also use the standard Jira environment variables to obtai
 export JIRA_URL=https://your-domain.atlassian.net/
 export JIRA_USER=abcd@xyz.com
 export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
+export JIRA_PERSONAL_ACCESS_TOKEN="MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 ```
 
 ## Get involved
