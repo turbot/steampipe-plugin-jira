@@ -54,6 +54,9 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if token == "" && personal_access_token == "" {
 		return nil, errors.New("at least one of 'token' or 'personal_access_token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
+	if token != "" && personal_access_token != "" {
+		return nil, errors.New("'token' and 'personal_access_token' are both set, please only use one. Edit your connection configuration file and then restart Steampipe")
+	}
 
 	var client *jira.Client
 	var err error
