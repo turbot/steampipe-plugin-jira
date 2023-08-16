@@ -354,7 +354,7 @@ func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 	if issueStauus != "" {
 		return issueStauus, nil
 	}
-	return issue.Fields.Status, nil
+	return issue.Fields.Status.Name, nil
 }
 
 //// TRANSFORM FUNCTION
