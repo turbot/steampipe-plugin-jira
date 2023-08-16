@@ -81,7 +81,8 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "status",
 				Description: "Json object containing important subfields info the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Status.Name"),
+				Hydrate:     getStatusValue,
+				Transform:   transform.FromValue(),
 			},
 			{
 				Name:        "status_category",
@@ -344,6 +345,16 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	}
 
 	return IssueInfo{*issue, keys}, err
+}
+
+func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	issue := h.Item.(IssueInfo)
+	issueStauus := d.EqualsQualString("status")
+
+	if issueStauus != "" {
+		return issueStauus, nil
+	}
+	return issue.Fields.Status, nil
 }
 
 //// TRANSFORM FUNCTION
