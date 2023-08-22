@@ -1,3 +1,9 @@
+## v0.10.2 [2023-08-22]
+
+_Bug fixes_
+
+- Fixed the `sprint_ids` column in `jira_issue` table to return correct results for issues that have no sprints. ([#87](https://github.com/turbot/steampipe-plugin-jira/pull/87)) (Thanks [@juandspy](https://github.com/juandspy) for the contribution!)
+
 ## v0.10.1 [2023-06-16]
 
 _Bug fixes_
