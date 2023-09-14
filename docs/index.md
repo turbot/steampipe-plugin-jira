@@ -103,6 +103,29 @@ export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
 export JIRA_PERSONAL_ACCESS_TOKEN="MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 ```
 
+## Important note about self hosted Jira instances
+
+As reported in [this GH issue](https://github.com/turbot/steampipe-plugin-jira/pull/86#issuecomment-1697122416), there are some tables that don't work on self hosted Jira.
+
+| table                 | works |
+|-----------------------|:-----:|
+| jira_advanced_setting |   ❌  |
+| jira_backlog_issue    |   ✅  |
+| jira_board            |   ✅  |
+| jira_component        |   ❌  |
+| jira_dashboard        |   ❌  |
+| jira_epic             |   ❌  |
+| jira_global_setting   |   ❌  |
+| jira_group            |   ❌  |
+| jira_issue            |   ✅  |
+| jira_issue_type       |   ❌  |
+| jira_priority         |   ❌  |
+| jira_project          |   ❌  |
+| jira_project_role     |   ❌  |
+| jira_sprint           |   ✅  |
+| jira_user             |   ❌  |
+| jira_workflow         |   ❌  |
+
 ## Get involved
 
 - Open source: https://github.com/turbot/steampipe-plugin-jira
