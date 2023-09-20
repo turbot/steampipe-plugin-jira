@@ -1,3 +1,13 @@
+## v0.11.0 [2023-09-21]
+
+_What's new?_
+
+- Added support for querying on-premise Jira instances. This can be done by setting the `personal_access_token` config argument in the `jira.spc` file. ([#86](https://github.com/turbot/steampipe-plugin-jira/pull/86)) (Thanks [@juandspy](https://github.com/juandspy) for the contribution!)
+
+_Dependencies_
+
+- Recompiled plugin with [steampipe-plugin-sdk v5.5.1](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v551-2023-07-26) which significantly reduces API calls and boosts query performance, resulting in faster data retrieval. ([#92](https://github.com/turbot/steampipe-plugin-jira/pull/92))
+
 ## v0.10.2 [2023-08-22]
 
 _Bug fixes_
