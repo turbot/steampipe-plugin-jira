@@ -48,14 +48,14 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if baseUrl == "" {
 		return nil, errors.New("'base_url' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
-	if username == "" {
+	if username == "" && token != "" {
 		return nil, errors.New("'username' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
 	if token == "" && personal_access_token == "" {
 		return nil, errors.New("at least one of 'token' or 'personal_access_token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
 	if token != "" && personal_access_token != "" {
-		return nil, errors.New("'token' and 'personal_access_token' are both set, please only use one. Edit your connection configuration file and then restart Steampipe")
+		return nil, errors.New("'token' and 'personal_access_token' are both set, please use only one of the fields. Edit your connection configuration file and then restart Steampipe")
 	}
 
 	var client *jira.Client

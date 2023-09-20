@@ -21,9 +21,7 @@ steampipe plugin install jira
 
 Configure your [credentials](https://hub.steampipe.io/plugins/turbot/jira#credentials) and [config file](https://hub.steampipe.io/plugins/turbot/jira#configuration).
 
-> The Personal Access Token (PAT) is used for
-[self-hosted Jira instances](https://github.com/andygrunwald/go-jira/#bearer---personal-access-tokens-self-hosted-jira).
-You should use the `personal_access_token` field instead of `token`.
+For [self-hosted Jira instances](https://github.com/andygrunwald/go-jira/#bearer---personal-access-tokens-self-hosted-jira), please use the `personal_access_token` field instead of `token`. This access token can only be used to query `jira_backlog_issue`, `jira_board`, `jira_issue` and `jira_sprint` tables.
 
 Configure your account details in `~/.steampipe/config/jira.spc`:
 
@@ -38,6 +36,19 @@ connection "jira" {
   personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 }
 ```
+
+For self-hosted Jira instances:
+
+```hcl
+connection "jira" {
+  plugin = jira
+
+  # Authentication information
+  base_url              = "https://your-domain.atlassian.net/"
+  personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
+}
+```
+
 
 Or through environment variables:
 
