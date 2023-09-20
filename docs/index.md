@@ -79,20 +79,29 @@ connection "jira" {
 
   # Access Token for which to use for the API
   # Can also be set with the `JIRA_TOKEN` environment variable.
+  # You should leave it empty if you are using a Personal Access Token (PAT)
   # token = "8WqcdT0rvIZpCjtDqReF48B1"
+
+  # Personal Access Tokens are a safe alternative to using username and password for authentication.
+  # This token is used in self-hosted Jira instances.
+  # Can also be set with the `JIRA_PERSONAL_ACCESS_TOKEN` environment variable.
+  # Personal Access Token can only be used to query jira_backlog_issue, jira_board, jira_issue and jira_sprint tables.
+  # personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 }
 ```
 
 - `base_url` - The site url of your attlassian jira subscription.
-- `username` - Email address of agent user who have permission to access the API.
+- `personal_access_token` - [API PAT](https://confluence.atlassian.com/enterprise/using-personal-access-tokens-1026032365.html) for self hosted Jira instances. This access token can only be used to query `jira_backlog_issue`, `jira_board`, `jira_issue` and `jira_sprint` tables.
 - `token` - [API token](https://id.atlassian.com/manage-profile/security/api-tokens) for user's Atlassian account.
+- `username` - Email address of agent user who have permission to access the API.
 
-Alternatively, you can also use the standard Jira environment variables to obtain credentials **only if other arguments (`base_url`, `username` and `token`) are not specified** in the connection:
+Alternatively, you can also use the standard Jira environment variables to obtain credentials **only if other arguments (`base_url`, `username` and `token` or `personal_access_token`) are not specified** in the connection:
 
 ```sh
 export JIRA_URL=https://your-domain.atlassian.net/
 export JIRA_USER=abcd@xyz.com
 export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
+export JIRA_PERSONAL_ACCESS_TOKEN="MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 ```
 
 ## Get involved

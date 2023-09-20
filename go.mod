@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/andygrunwald/go-jira v1.16.0
+	github.com/andygrunwald/go-jira/v2 v2.0.0-20230325080157-2e11dffbdb9a
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.5.1
 )
 
@@ -38,7 +39,7 @@ require (
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
-	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
