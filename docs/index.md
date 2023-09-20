@@ -79,13 +79,20 @@ connection "jira" {
 
   # Access Token for which to use for the API
   # Can also be set with the `JIRA_TOKEN` environment variable.
+  # You should leave it empty if you are using a Personal Access Token (PAT)
   # token = "8WqcdT0rvIZpCjtDqReF48B1"
+
+  # Personal Access Token for which to use for the API.
+  # This one isused in self-hosted Jira instances.
+  # Can also be set with the `JIRA_PERSONAL_ACCESS_TOKEN` environment variable.
+  # personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 }
 ```
 
 - `base_url` - The site url of your attlassian jira subscription.
 - `username` - Email address of agent user who have permission to access the API.
 - `token` - [API token](https://id.atlassian.com/manage-profile/security/api-tokens) for user's Atlassian account.
+- `personal_access_token` - [API PAT](https://confluence.atlassian.com/enterprise/using-personal-access-tokens-1026032365.html) for self hosted Jira instances.
 
 Alternatively, you can also use the standard Jira environment variables to obtain credentials **only if other arguments (`base_url`, `username` and `token`) are not specified** in the connection:
 
@@ -93,7 +100,31 @@ Alternatively, you can also use the standard Jira environment variables to obtai
 export JIRA_URL=https://your-domain.atlassian.net/
 export JIRA_USER=abcd@xyz.com
 export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
+export JIRA_PERSONAL_ACCESS_TOKEN="MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 ```
+
+## Important note about self hosted Jira instances
+
+As reported in [this GH issue](https://github.com/turbot/steampipe-plugin-jira/pull/86#issuecomment-1697122416), there are some tables that don't work on self hosted Jira.
+
+| table                 | works |
+|-----------------------|:-----:|
+| jira_advanced_setting |   ❌  |
+| jira_backlog_issue    |   ✅  |
+| jira_board            |   ✅  |
+| jira_component        |   ❌  |
+| jira_dashboard        |   ❌  |
+| jira_epic             |   ❌  |
+| jira_global_setting   |   ❌  |
+| jira_group            |   ❌  |
+| jira_issue            |   ✅  |
+| jira_issue_type       |   ❌  |
+| jira_priority         |   ❌  |
+| jira_project          |   ❌  |
+| jira_project_role     |   ❌  |
+| jira_sprint           |   ✅  |
+| jira_user             |   ❌  |
+| jira_workflow         |   ❌  |
 
 ## Get involved
 

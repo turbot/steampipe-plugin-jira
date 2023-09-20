@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andygrunwald/go-jira"
+	jira "github.com/andygrunwald/go-jira"
+	on_premise "github.com/andygrunwald/go-jira/v2/onpremise"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
@@ -26,6 +27,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	baseUrl := os.Getenv("JIRA_URL")
 	username := os.Getenv("JIRA_USER")
 	token := os.Getenv("JIRA_TOKEN")
+	personal_access_token := os.Getenv("JIRA_PERSONAL_ACCESS_TOKEN")
 
 	// Prefer config options given in Steampipe
 	jiraConfig := GetConfig(d.Connection)
@@ -39,6 +41,9 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if jiraConfig.Token != nil {
 		token = *jiraConfig.Token
 	}
+	if jiraConfig.PersonalAccessToken != nil {
+		personal_access_token = *jiraConfig.PersonalAccessToken
+	}
 
 	if baseUrl == "" {
 		return nil, errors.New("'base_url' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
@@ -46,17 +51,28 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if username == "" {
 		return nil, errors.New("'username' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
 	}
-	if token == "" {
-		return nil, errors.New("'token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+	if token == "" && personal_access_token == "" {
+		return nil, errors.New("at least one of 'token' or 'personal_access_token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+	}
+	if token != "" && personal_access_token != "" {
+		return nil, errors.New("'token' and 'personal_access_token' are both set, please only use one. Edit your connection configuration file and then restart Steampipe")
 	}
 
-	tokenProvider := jira.BasicAuthTransport{
-		Username: username,
-		Password: token,
+	var client *jira.Client
+	var err error
+
+	if personal_access_token != "" {
+		// If the username is empty, let's assume the user is using a PAT
+		tokenProvider := on_premise.BearerAuthTransport{Token: personal_access_token}
+		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
+	} else {
+		tokenProvider := jira.BasicAuthTransport{
+			Username: username,
+			Password: token,
+		}
+		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
 	}
 
-	// Create the client
-	client, err := jira.NewClient(tokenProvider.Client(), baseUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Jira client: %s", err.Error())
 	}
