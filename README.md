@@ -21,8 +21,6 @@ steampipe plugin install jira
 
 Configure your [credentials](https://hub.steampipe.io/plugins/turbot/jira#credentials) and [config file](https://hub.steampipe.io/plugins/turbot/jira#configuration).
 
-For [self-hosted Jira instances](https://github.com/andygrunwald/go-jira/#bearer---personal-access-tokens-self-hosted-jira), please use the `personal_access_token` field instead of `token`. This access token can only be used to query `jira_backlog_issue`, `jira_board`, `jira_issue` and `jira_sprint` tables.
-
 Configure your account details in `~/.steampipe/config/jira.spc`:
 
 ```hcl
@@ -33,11 +31,10 @@ connection "jira" {
   base_url              = "https://your-domain.atlassian.net/"
   username              = "abcd@xyz.com"
   token                 = "8WqcdT0rvIZpCjtDqReF48B1"
-  personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 }
 ```
 
-For self-hosted Jira instances:
+For [self-hosted Jira instances](https://github.com/andygrunwald/go-jira/#bearer---personal-access-tokens-self-hosted-jira), please use the `personal_access_token` field instead of `token`. This access token can only be used to query `jira_backlog_issue`, `jira_board`, `jira_issue` and `jira_sprint` tables.
 
 ```hcl
 connection "jira" {
@@ -48,7 +45,6 @@ connection "jira" {
   personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 }
 ```
-
 
 Or through environment variables:
 

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	jira "github.com/andygrunwald/go-jira"
-	on_premise "github.com/andygrunwald/go-jira/v2/onpremise"
+	jirav2 "github.com/andygrunwald/go-jira/v2/onpremise"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
@@ -46,16 +46,16 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	}
 
 	if baseUrl == "" {
-		return nil, errors.New("'base_url' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+		return nil, errors.New("'base_url' must be set in the connection configuration")
 	}
 	if username == "" && token != "" {
-		return nil, errors.New("'username' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+		return nil, errors.New("'token' is set but 'username' is not set in the connection configuration")
 	}
 	if token == "" && personal_access_token == "" {
-		return nil, errors.New("at least one of 'token' or 'personal_access_token' must be set in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+		return nil, errors.New("'token' or 'personal_access_token' must be set in the connection configuration")
 	}
 	if token != "" && personal_access_token != "" {
-		return nil, errors.New("'token' and 'personal_access_token' are both set, please use only one of the fields. Edit your connection configuration file and then restart Steampipe")
+		return nil, errors.New("'token' and 'personal_access_token' are both set, please use only one auth method")
 	}
 
 	var client *jira.Client
@@ -63,7 +63,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 
 	if personal_access_token != "" {
 		// If the username is empty, let's assume the user is using a PAT
-		tokenProvider := on_premise.BearerAuthTransport{Token: personal_access_token}
+		tokenProvider := jirav2.BearerAuthTransport{Token: personal_access_token}
 		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
 	} else {
 		tokenProvider := jira.BasicAuthTransport{

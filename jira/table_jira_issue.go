@@ -263,7 +263,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	for {
 		searchResult, res, err := searchWithContext(ctx, d, jql, &options)
 		if err != nil {
-			plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithContext", err)
+			plugin.Logger(ctx).Error("jira_issue.listIssues", "search_error", err)
 			return nil, err
 		}
 		issues := searchResult.Issues
