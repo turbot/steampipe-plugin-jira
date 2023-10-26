@@ -56,7 +56,7 @@ steampipe plugin install jira
 
 | Item        | Description                                                                                                                            |
 | :---------- | :------------------------------------------------------------------------------------------------------------------------------------- |
-| Credentials | Jira requires an [API token](https://id.atlassian.com/manage-profile/security/api-tokens), sit base url and username for all requests. |
+| Credentials | Jira requires an [API token](https://id.atlassian.com/manage-profile/security/api-tokens), site base url and username for all requests. |
 | Radius      | Each connection represents a single Jira site.                                                                                         |
 
 <!-- | Permissions | Grant the `ReadOnlyAccess` policy to your user or role.                                                                                | -->
