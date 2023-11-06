@@ -241,13 +241,19 @@ func tableIssue(_ context.Context) *plugin.Table {
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 
 	last := 0
+	pageSize, err := getPageSize(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues", "page_size", err)
+		return nil, err
+	}
+	plugin.Logger(ctx).Debug("jira_issue.listIssues", "page_size", pageSize)
 
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
 	queryLimit := d.QueryContext.Limit
-	var limit int = 50
+	var limit int = pageSize
 	if d.QueryContext.Limit != nil {
-		if *queryLimit < 50 {
+		if *queryLimit < int64(limit) {
 			limit = int(*queryLimit)
 		}
 	}

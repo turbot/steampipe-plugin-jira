@@ -158,3 +158,18 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 func getIssueJQLKey(columnName string) string {
 	return strings.ToLower(strings.Split(columnName, "_")[0])
 }
+
+func getPageSize(_ context.Context, d *plugin.QueryData) (int, error) {
+	jiraConfig := GetConfig(d.Connection)
+
+	pageSize := 50
+	if jiraConfig.PageSize != nil {
+		pageSize = *jiraConfig.PageSize
+	}
+
+	if pageSize < 1 || pageSize > 100 {
+		return -1, errors.New("'page_size' must be set to 1 to 100 in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+	}
+
+	return pageSize, nil
+}
