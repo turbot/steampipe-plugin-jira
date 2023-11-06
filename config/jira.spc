@@ -19,4 +19,8 @@ connection "jira" {
   # Can also be set with the `JIRA_PERSONAL_ACCESS_TOKEN` environment variable.
   # Personal Access Token can only be used to query jira_backlog_issue, jira_board, jira_issue and jira_sprint tables.
   # personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
+
+  # Pagination size for the jira search API
+  # Default is 50, max is 100.
+  # page_size = 50
 }

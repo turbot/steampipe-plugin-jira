@@ -9,6 +9,7 @@ type jiraConfig struct {
 	Username            *string `hcl:"username"`
 	Token               *string `hcl:"token"`
 	PersonalAccessToken *string `hcl:"personal_access_token"`
+	PageSize            *int    `cty:"page_size"`
 }
 
 func ConfigInstance() interface{} {
