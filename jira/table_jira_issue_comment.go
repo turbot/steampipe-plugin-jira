@@ -16,7 +16,7 @@ import (
 func tableIssueComment(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:        "jira_issue_comment",
-		Description: "Issues help manage code, estimate workload, and keep track of team.",
+		Description: "Comments that provided in issue.",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.AnyColumn([]string{"issue_id", "id"}),
 			Hydrate:    getIssueComment,
@@ -129,7 +129,7 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 
 	client, err := connect(ctx, d)
 	if err != nil {
-		plugin.Logger(ctx).Error("jira_user.listIssueComments", "connection_error", err)
+		plugin.Logger(ctx).Error("jira_issue_comment.listIssueComments", "connection_error", err)
 		return nil, err
 	}
 
@@ -191,7 +191,7 @@ func getIssueComment(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrate
 
 	client, err := connect(ctx, d)
 	if err != nil {
-		plugin.Logger(ctx).Error("jira_user.listIssueComments", "connection_error", err)
+		plugin.Logger(ctx).Error("jira_issue_comment.getIssueComment", "connection_error", err)
 		return nil, err
 	}
 
@@ -199,7 +199,7 @@ func getIssueComment(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrate
 
 	req, err := client.NewRequest("GET", apiEndpoint, nil)
 	if err != nil {
-		plugin.Logger(ctx).Error("jira_issue_comment.listIssueComments", "get_request_error", err)
+		plugin.Logger(ctx).Error("jira_issue_comment.getIssueComment", "get_request_error", err)
 		return nil, err
 	}
 
