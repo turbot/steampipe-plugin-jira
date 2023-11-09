@@ -1,3 +1,32 @@
+## v0.12.1 [2023-10-04]
+
+_Dependencies_
+
+- Recompiled plugin with [steampipe-plugin-sdk v5.6.2](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v562-2023-10-03) which prevents nil pointer reference errors for implicit hydrate configs. ([#98](https://github.com/turbot/steampipe-plugin-jira/pull/98))
+
+## v0.12.0 [2023-10-02]
+
+_Dependencies_
+
+- Upgraded to [steampipe-plugin-sdk v5.6.1](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v561-2023-09-29) with support for rate limiters. ([#96](https://github.com/turbot/steampipe-plugin-jira/pull/96))
+- Recompiled plugin with Go version `1.21`. ([#96](https://github.com/turbot/steampipe-plugin-jira/pull/96))
+
+## v0.11.0 [2023-09-21]
+
+_What's new?_
+
+- Added support for querying on-premise Jira instances. This can be done by setting the `personal_access_token` config argument in the `jira.spc` file. ([#86](https://github.com/turbot/steampipe-plugin-jira/pull/86)) (Thanks [@juandspy](https://github.com/juandspy) for the contribution!)
+
+_Dependencies_
+
+- Recompiled plugin with [steampipe-plugin-sdk v5.5.1](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v551-2023-07-26) which significantly reduces API calls and boosts query performance, resulting in faster data retrieval. ([#92](https://github.com/turbot/steampipe-plugin-jira/pull/92))
+
+## v0.10.2 [2023-08-22]
+
+_Bug fixes_
+
+- Fixed the `sprint_ids` column of the `jira_issue` table to correctly return data for issues that have no sprints, instead of returning an error. ([#87](https://github.com/turbot/steampipe-plugin-jira/pull/87)) (Thanks [@juandspy](https://github.com/juandspy) for the contribution!)
+
 ## v0.10.1 [2023-06-16]
 
 _Bug fixes_

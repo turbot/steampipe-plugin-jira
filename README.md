@@ -28,9 +28,21 @@ connection "jira" {
   plugin = jira
 
   # Authentication information
-  base_url = "https://your-domain.atlassian.net/"
-  username = "abcd@xyz.com"
-  token    = "8WqcdT0rvIZpCjtDqReF48B1"
+  base_url              = "https://your-domain.atlassian.net/"
+  username              = "abcd@xyz.com"
+  token                 = "8WqcdT0rvIZpCjtDqReF48B1"
+}
+```
+
+For [self-hosted Jira instances](https://github.com/andygrunwald/go-jira/#bearer---personal-access-tokens-self-hosted-jira), please use the `personal_access_token` field instead of `token`. This access token can only be used to query `jira_backlog_issue`, `jira_board`, `jira_issue` and `jira_sprint` tables.
+
+```hcl
+connection "jira" {
+  plugin = jira
+
+  # Authentication information
+  base_url              = "https://your-domain.atlassian.net/"
+  personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 }
 ```
 
@@ -40,6 +52,7 @@ Or through environment variables:
 export JIRA_URL=https://your-domain.atlassian.net/
 export JIRA_USER=abcd@xyz.com
 export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
+export JIRA_PERSONAL_ACCESS_TOKEN="MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 ```
 
 Run steampipe:

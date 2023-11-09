@@ -11,5 +11,12 @@ connection "jira" {
 
   # Access Token for which to use for the API
   # Can also be set with the `JIRA_TOKEN` environment variable.
+  # You should leave it empty if you are using a Personal Access Token (PAT)
   # token = "8WqcdT0rvIZpCjtDqReF48B1"
+
+  # Personal Access Tokens are a safe alternative to using username and password for authentication.
+  # This token is used in self-hosted Jira instances.
+  # Can also be set with the `JIRA_PERSONAL_ACCESS_TOKEN` environment variable.
+  # Personal Access Token can only be used to query jira_backlog_issue, jira_board, jira_issue and jira_sprint tables.
+  # personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 }
