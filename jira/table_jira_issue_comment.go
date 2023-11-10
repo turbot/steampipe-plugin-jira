@@ -63,7 +63,7 @@ func tableIssueComment(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "jsd_public",
-				Description: "JsdPublic set to false does not hide comment in Service Desk projects",
+				Description: "JsdPublic set to false does not hide comments in Service Desk projects.",
 				Type:        proto.ColumnType_BOOL,
 			},
 
