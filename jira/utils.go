@@ -96,7 +96,12 @@ func convertJiraTime(_ context.Context, d *transform.TransformData) (interface{}
 	if d.Value == nil {
 		return nil, nil
 	}
-	return time.Time(d.Value.(jira.Time)), nil
+	if v, ok := d.Value.(jira.Time); ok {
+		return time.Time(v), nil
+	} else if v, ok := d.Value.(*jira.Time); ok {
+		return time.Time(*v), nil
+	}
+	return nil, nil
 }
 
 // convertJiraDate:: converts jira.Date to time.Time
