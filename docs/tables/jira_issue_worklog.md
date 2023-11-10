@@ -17,7 +17,7 @@ from
   jira_issue_worklog;
 ```
 
-### Get spent time for issues
+### Get time logged for issues
 
 ```sql
 select
@@ -29,7 +29,7 @@ group by
   issue_id;
 ```
 
-### List the most recent worklogs in last 5 days of issues
+### Show the latest worklogs for issues from the past 5 days."
 
 ```sql
 select
@@ -43,7 +43,7 @@ where
   created >= now() - interval '5' day;
 ```
 
-### List the issue details on which time had spent on last day
+### Display details of issues that had time logged against them yesterday.
 
 ```sql
 select distinct
