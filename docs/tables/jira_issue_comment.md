@@ -16,7 +16,7 @@ from
   jira_issue_comment;
 ```
 
-### List comments that are hide comment in Service Desk
+### List comments that are hide in Service Desk
 
 ```sql
 select
