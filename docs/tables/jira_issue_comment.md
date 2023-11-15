@@ -32,7 +32,7 @@ where
   jsd_public;
 ```
 
-### List most recent comment in last 5 days of issues
+### List comments posted in the last 5 days for a particular issues
 
 ```sql
 select
