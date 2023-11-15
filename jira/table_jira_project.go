@@ -103,7 +103,7 @@ func tableProject(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "properties",
-				Description: "This resource represents project properties, which provides for storing custom data against a project.",
+				Description: "This resource represents project properties, which provide for storing custom data against a project.",
 				Type:        proto.ColumnType_JSON,
 				Hydrate:     getProjectProperties,
 				Transform:   transform.FromValue(),
