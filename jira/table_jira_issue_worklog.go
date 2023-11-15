@@ -155,6 +155,7 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		w := new(jira.Worklog)
 		_, err = client.Do(req, w)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_issue_worklog.listIssueWorklogs", "api_error", err)
 			return nil, err
 		}
 
@@ -205,6 +206,7 @@ func getIssueWorklog(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrate
 		if isNotFoundError(err) {
 			return nil, nil
 		}
+		plugin.Logger(ctx).Error("jira_issue_worklog.getIssueWorklog", "api_error", err)
 		return nil, err
 	}
 
