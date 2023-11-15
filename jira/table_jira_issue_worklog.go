@@ -157,7 +157,6 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		if err != nil {
 			return nil, err
 		}
-		// body, _ := io.ReadAll(res.Body)
 
 		for _, c := range w.Worklogs {
 			d.StreamListItem(ctx, WorklogDetails{c, issueinfo.ID})
