@@ -47,7 +47,7 @@ where
   and issue_id = '10021';
 ```
 
-### List comments that updated in lsdt 2 hours
+### List comments that were updated in last 2 hours
 
 ```sql
 select
