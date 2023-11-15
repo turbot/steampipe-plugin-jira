@@ -16,7 +16,7 @@ import (
 func tableIssueWorklog(_ context.Context) *plugin.Table {
 	return &plugin.Table{
 		Name:        "jira_issue_worklog",
-		Description: "ira worklog is a feature within the Jira software that allows users to record the amount of time they have spent working on various tasks or issues.",
+		Description: "Jira worklog is a feature within the Jira software that allows users to record the amount of time they have spent working on various tasks or issues.",
 		Get: &plugin.GetConfig{
 			KeyColumns: plugin.AnyColumn([]string{"issue_id", "id"}),
 			Hydrate:    getIssueWorklog,
