@@ -270,6 +270,7 @@ func getProjectProperties(ctx context.Context, d *plugin.QueryData, h *plugin.Hy
 		property := new(KeyPropertyValue)
 		_, err = client.Do(req, property)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_project.getProjectProperties", "api_error", err)
 			return nil, err
 		}
 		properties = append(properties, *property)
@@ -291,6 +292,7 @@ func getProjectPropertyKeys(ctx context.Context, client *jira.Client, projectId 
 	keys := new(ProjectKeys)
 	_, err = client.Do(req, keys)
 	if err != nil {
+		plugin.Logger(ctx).Error("jira_project.getProjectPropertyKeys", "api_error", err)
 		return nil, err
 	}
 
