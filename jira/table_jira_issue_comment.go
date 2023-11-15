@@ -157,6 +157,7 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		comments := new(CommentResult)
 		_, err = client.Do(req, comments)
 		if err != nil {
+			plugin.Logger(ctx).Error("jira_issue_comment.listIssueComments", "api_error", err)
 			return nil, err
 		}
 
@@ -207,6 +208,7 @@ func getIssueComment(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrate
 		if isNotFoundError(err) {
 			return nil, nil
 		}
+		plugin.Logger(ctx).Error("jira_issue_comment.getIssueComment", "api_error", err)
 		return nil, err
 	}
 
