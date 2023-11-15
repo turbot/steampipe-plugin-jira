@@ -152,7 +152,6 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 			return nil, err
 		}
 
-		// var v interface{}
 		w := new(jira.Worklog)
 		_, err = client.Do(req, w)
 		if err != nil {
