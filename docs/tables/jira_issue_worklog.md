@@ -43,7 +43,7 @@ where
   created >= now() - interval '5' day;
 ```
 
-### Retrieve issues and their worklogs updated yesterday
+### Retrieve issues and their worklogs updated in the last 10 days
 
 ```sql
 select distinct
@@ -61,7 +61,7 @@ from
 where
   i.id like trim(w.issue_id)
 and
-  w.updated >= now() - interval '1' day;
+  w.updated >= now() - interval '10' day;
 ```
 
 ### Get author information of worklogs
