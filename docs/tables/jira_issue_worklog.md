@@ -43,7 +43,7 @@ where
   created >= now() - interval '5' day;
 ```
 
-### Display details of issues that had time logged against them yesterday.
+### Retrieve issues and their worklogs updated yesterday
 
 ```sql
 select distinct
