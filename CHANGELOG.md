@@ -13,7 +13,7 @@ _Enhancements_
 _Bug fixes_
 
 - Fixed typo in the docs/index.md file. ([#102](https://github.com/turbot/steampipe-plugin-jira/pull/102)) (Thanks [@adrfrank](https://github.com/adrfrank) for the contribution!)
-- Fixed the `jira_issue` table by enhancing case insensitivity support. ([#90](https://github.com/turbot/steampipe-plugin-jira/pull/90))
+- Fixed the `jira_issue` table by enhancing case insensitivity support for the `status` column. ([#90](https://github.com/turbot/steampipe-plugin-jira/pull/90))
 
 ## v0.12.1 [2023-10-04]
 
