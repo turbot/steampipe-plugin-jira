@@ -29,6 +29,7 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			"jira_global_setting":   tableGlobalSetting(ctx),
 			"jira_group":            tableGroup(ctx),
 			"jira_issue":            tableIssue(ctx),
+			"jira_issue_comment":    tableIssueComment(ctx),
 			"jira_issue_type":       tableIssueType(ctx),
 			"jira_issue_worklog":    tableIssueWorklog(ctx),
 			"jira_priority":         tablePriority(ctx),
