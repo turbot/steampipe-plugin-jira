@@ -74,5 +74,7 @@ select
   author ->> 'emailAddress' as author_email_address,
   author ->> 'timeZone' as author_time_zone
 from
-  jira_issue_comment;
+  jira_issue_comment
+where
+  id = '10015';
 ```
