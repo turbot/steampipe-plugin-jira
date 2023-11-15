@@ -159,7 +159,6 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		if err != nil {
 			return nil, err
 		}
-		// body, _ := io.ReadAll(res.Body)
 
 		for _, c := range comments.Comments {
 			d.StreamListItem(ctx, commentWithIssueDetails{c, issueinfo.ID})
