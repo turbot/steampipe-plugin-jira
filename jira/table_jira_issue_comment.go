@@ -53,7 +53,7 @@ func tableIssueComment(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "created",
-				Description: "Time when the issue was created.",
+				Description: "Time when the issue comment was created.",
 				Type:        proto.ColumnType_TIMESTAMP,
 			},
 			{
