@@ -1,3 +1,20 @@
+## v0.13.0 [2023-11-15]
+
+_What's new?_
+
+- New tables added
+  - [jira_issue_comment](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_issue_comment) ([#103](https://github.com/turbot/steampipe-plugin-jira/pull/103))
+  - [jira_issue_worklog](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_issue_worklog) ([#104](https://github.com/turbot/steampipe-plugin-jira/pull/104))
+
+_Enhancements_
+
+- Added the `properties` column to `jira_project` table. ([#105](https://github.com/turbot/steampipe-plugin-jira/pull/105))
+
+_Bug fixes_
+
+- Fixed typo in the docs/index.md file. ([#102](https://github.com/turbot/steampipe-plugin-jira/pull/102)) (Thanks [@adrfrank](https://github.com/adrfrank) for the contribution!)
+- Fixed the `jira_issue` table by enhancing case insensitivity support for the `status` column. ([#90](https://github.com/turbot/steampipe-plugin-jira/pull/90))
+
 ## v0.12.1 [2023-10-04]
 
 _Dependencies_
