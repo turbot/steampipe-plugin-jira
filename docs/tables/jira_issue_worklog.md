@@ -29,7 +29,7 @@ group by
   issue_id;
 ```
 
-### Show the latest worklogs for issues from the past 5 days."
+### Show the latest worklogs for issues from the past 5 days
 
 ```sql
 select
