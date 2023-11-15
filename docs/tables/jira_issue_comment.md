@@ -62,7 +62,7 @@ where
   updated >= now() - interval '2' hour;
 ```
 
-### Get author information of comments
+### Get author information of a particular issue comment
 
 ```sql
 select
