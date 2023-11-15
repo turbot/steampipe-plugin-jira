@@ -154,7 +154,6 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 			return nil, err
 		}
 
-		// var v interface{}
 		comments := new(CommentResult)
 		_, err = client.Do(req, comments)
 		if err != nil {
