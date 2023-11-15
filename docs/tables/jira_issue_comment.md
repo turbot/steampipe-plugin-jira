@@ -43,7 +43,8 @@ select
 from
   jira_issue_comment
 where
-  created >= now() - interval '5' day;
+  created >= now() - interval '5' day
+  and issue_id = '10021';
 ```
 
 ### List comments that updated in lsdt 2 hours
