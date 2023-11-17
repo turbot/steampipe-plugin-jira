@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -99,6 +100,13 @@ func tableProject(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_JSON,
 				Hydrate:     getProject,
 				Transform:   transform.FromField("Components").Transform(extractProjectComponentIds),
+			},
+			{
+				Name:        "properties",
+				Description: "This resource represents project properties, which provide for storing custom data against a project.",
+				Type:        proto.ColumnType_JSON,
+				Hydrate:     getProjectProperties,
+				Transform:   transform.FromValue(),
 			},
 			{
 				Name:        "issue_types",
@@ -235,7 +243,73 @@ func getProject(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 	return project, err
 }
 
+func getProjectProperties(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	project := getProjectInfo(ctx, h.Item)
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_project.getProjectProperties", "connection_error", err)
+		return nil, err
+	}
+
+	keys, err := getProjectPropertyKeys(ctx, client, project.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var properties []KeyPropertyValue
+	for _, key := range keys {
+		apiEndpoint := fmt.Sprintf("rest/api/3/project/%s/properties/%s", project.ID, key.Key)
+
+		req, err := client.NewRequest("GET", strings.Trim(apiEndpoint, " "), nil)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_project.getProjectProperties", "get_request_error", err)
+			return nil, err
+		}
+
+		property := new(KeyPropertyValue)
+		_, err = client.Do(req, property)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_project.getProjectProperties", "api_error", err)
+			return nil, err
+		}
+		properties = append(properties, *property)
+
+	}
+
+	return properties, nil
+}
+
+func getProjectPropertyKeys(ctx context.Context, client *jira.Client, projectId string) ([]ProjectKey, error) {
+	apiEndpoint := fmt.Sprintf("rest/api/3/project/%s/properties", projectId)
+
+	req, err := client.NewRequest("GET", apiEndpoint, nil)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_project.getProjectPropertyKeys", "get_request_error", err)
+		return nil, err
+	}
+
+	keys := new(ProjectKeys)
+	_, err = client.Do(req, keys)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_project.getProjectPropertyKeys", "api_error", err)
+		return nil, err
+	}
+
+	return keys.Keys, nil
+}
+
 //// TRANSFORM FUNCTION
+
+func getProjectInfo(ctx context.Context, projectInfo interface{}) Project {
+	switch item := projectInfo.(type) {
+	case *Project:
+		return *item
+	case Project:
+		return item
+	}
+	return Project{}
+}
 
 func extractProjectComponentIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	var componentIds []string
@@ -275,4 +349,17 @@ type Project struct {
 	AvatarUrls      jira.AvatarUrls         `json:"avatarUrls,omitempty" structs:"avatarUrls,omitempty"`
 	ProjectCategory jira.ProjectCategory    `json:"projectCategory,omitempty" structs:"projectCategory,omitempty"`
 	ProjectTypeKey  string                  `json:"projectTypeKey" structs:"projectTypeKey"`
+}
+
+type KeyPropertyValue struct {
+	Key   string      `json:"key,omitempty" structs:"key,omitempty"`
+	Value interface{} `json:"value,omitempty" structs:"value,omitempty"`
+}
+
+type ProjectKeys struct {
+	Keys []ProjectKey `json:"keys,omitempty" structs:"keys,omitempty"`
+}
+type ProjectKey struct {
+	Self string `json:"self,omitempty" structs:"self,omitempty"`
+	Key  string `json:"key,omitempty" structs:"key,omitempty"`
 }
