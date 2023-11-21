@@ -242,6 +242,8 @@ func tableIssue(_ context.Context) *plugin.Table {
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 
 	last := 0
+	issueCount := 1
+	issueLimit := 500
 	pageSize, err := getPageSize(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "page_size", err)
@@ -287,6 +289,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		for _, issue := range issues {
+			if issueCount > issueLimit {
+				plugin.Logger(ctx).Debug("Maximum number of issues reached", issueLimit)
+				return nil, nil
+			}
 			plugin.Logger(ctx).Debug("Issue output:", issue)
 			plugin.Logger(ctx).Debug("Issue names output:", names)
 			keys := map[string]string{
@@ -298,6 +304,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
+			issueCount += 1
 		}
 
 		last = searchResult.StartAt + len(issues)
