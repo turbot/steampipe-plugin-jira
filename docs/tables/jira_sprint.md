@@ -1,10 +1,20 @@
-# Table: jira_sprint
+---
+title: "Steampipe Table: jira_sprint - Query Jira Sprints using SQL"
+description: "Allows users to query Jira Sprints, providing insights into the progress, status, and details of each sprint within a Jira project."
+---
 
-A **Sprint** — also known as an iteration — is a short period in which the development team implements and delivers a discrete and potentially shippable application increment, e.g. a working milestone version.
+# Table: jira_sprint - Query Jira Sprints using SQL
+
+Jira Sprints are a key component of the agile project management offered by Jira. They represent a set timeframe during which specific work has to be completed and made ready for review. Sprints are used in the Scrum framework and they help teams to better manage and organize their work, by breaking down larger projects into manageable, time-boxed periods.
+
+## Table Usage Guide
+
+The `jira_sprint` table provides insights into the sprints within a Jira project. As a project manager or a team lead, you can explore details about each sprint, including its progress, status, and associated issues. Use this table to track the progress of ongoing sprints, plan for future sprints, and review the performance of past sprints.
 
 ## Examples
 
 ### Basic info
+Explore which projects are currently active, along with their respective timelines. This can assist in understanding the progress and schedules of different projects.
 
 ```sql
 select
@@ -20,6 +30,7 @@ from
 ```
 
 ### List sprints due in the next week
+Explore which sprints are due in the coming week. This can help in planning and prioritizing tasks accordingly.
 
 ```sql
 select
@@ -37,6 +48,7 @@ where
 ```
 
 ### List active sprints
+Explore which sprints are currently active in your Jira project. This query helps in gaining insights into ongoing tasks and managing project timelines effectively.
 
 ```sql
 select
@@ -52,6 +64,7 @@ where
 ```
 
 ### List issues in a sprints
+Discover the segments that require attention by identifying active tasks within a particular project phase, helping to allocate resources more effectively and manage project timelines.
 
 ```sql
 select
@@ -70,6 +83,7 @@ where
 ```
 
 ### Count of issues by sprint
+This query is useful for understanding the distribution of tasks across different sprints in a project. It provides an overview of workload allocation, helping to identify if certain sprints are overloaded with issues.
 ```sql
 select 
   b.name as board_name,

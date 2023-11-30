@@ -1,10 +1,20 @@
-# Table: jira_issue
+---
+title: "Steampipe Table: jira_issue - Query Jira Issues using SQL"
+description: "Allows users to query Jira Issues, specifically providing insights into issue details such as status, assignee, reporter, project, and more."
+---
 
-**Issues** are the building blocks of any Jira project. An issue could represent a story, a bug, a task, or another issue type in your project.
+# Table: jira_issue - Query Jira Issues using SQL
+
+Jira is a project management tool developed by Atlassian, widely used for issue tracking, bug tracking, and agile project management. It allows teams to manage, plan, track, and release software, ensuring transparency and team collaboration. Jira's issues, the core units of Jira, are used to track individual pieces of work that need to be completed.
+
+## Table Usage Guide
+
+The `jira_issue` table provides insights into Jira issues within a project. As a project manager or software developer, explore issue-specific details through this table, including status, assignee, reporter, and associated metadata. Utilize it to uncover information about issues, such as those unassigned, those in progress, and to verify project timelines.
 
 ## Examples
 
 ### Basic info
+Discover the segments that detail the creation and status of a project. This is useful to gain insights into project timelines, creators, and their current progress.
 
 ```sql
 select
@@ -19,6 +29,7 @@ from
 ```
 
 ### List issues for a specific project
+Explore the status and details of issues related to a specific project. This can aid in understanding the project's progress, identifying any roadblocks, and planning further actions effectively.
 
 ```sql
 select
@@ -37,6 +48,7 @@ where
 ```
 
 ### List all issues assigned to a specific user
+Explore which tasks are allocated to a particular individual, allowing you to gain insights into their workload and responsibilities. This is particularly useful for project management and task distribution.
 
 ```sql
 select
@@ -54,6 +66,7 @@ where
 ```
 
 ### List issues due in the next week
+Explore upcoming tasks by identifying issues scheduled for completion within the next week. This can help in prioritizing work and managing team assignments effectively.
 ```sql
 select
   id,
@@ -74,6 +87,10 @@ where
 
 
 ### Get issues belonging to a sprint
+1. "Explore which tasks are part of a particular sprint, allowing you to manage and prioritize your team's workflow effectively."
+2. "Identify all tasks that have been completed, providing a clear overview of your team's accomplishments and productivity."
+3. "Determine the tasks that are currently awaiting support, helping you to allocate resources and address bottlenecks in your workflow."
+4. "Review the different status categories within a specific project, offering insights into the project's progress and potential areas for improvement.
 
 ```sql
 select

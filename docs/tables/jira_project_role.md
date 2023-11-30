@@ -1,17 +1,20 @@
-# Table: jira_project_role
+---
+title: "Steampipe Table: jira_project_role - Query Jira Project Roles using SQL"
+description: "Allows users to query Jira Project Roles, providing insights into role details, permissions, and associated users and groups."
+---
 
-Project **Roles** are a flexible way to associate users and/or groups with particular projects. Project roles also allow for delegated administration:
+# Table: jira_project_role - Query Jira Project Roles using SQL
 
-- Jira administrators define project roles — that is, all projects have the same project roles available to them.
-- Project administrators assign members to project roles specifically for their project(s).
+Jira Project Roles are a flexible way to associate users and groups with projects. They allow project administrators to manage project role membership. Project roles can be used in permission schemes, issue security levels, notification schemes, and comment visibility.
 
-  A project administrator is someone who has the project-specific 'Administer Project' permission, but not necessarily the global 'Jira Administrator' permission.
+## Table Usage Guide
 
-**Note:** Project roles are somewhat similar to groups, the main difference being that group membership is global whereas project role membership is project-specific. Additionally, group membership can only be altered by Jira administrators, whereas project role membership can be altered by project administrators.
+The `jira_project_role` table provides insights into project roles within Jira. As a project administrator, explore role-specific details through this table, including permissions and associated users and groups. Utilize it to manage project role membership, and to set up permission schemes, issue security levels, and notification schemes.
 
 ## Examples
 
 ### Basic info
+Explore the different roles within your Jira project. This can help in understanding the distribution of responsibilities and in managing team members more effectively.
 
 ```sql
 select
@@ -23,6 +26,7 @@ from
 ```
 
 ### Get actor details
+Explore the details of different actors within your Jira project roles. This query is useful for gaining insights into the identities and account IDs of actors, aiding in project management and team coordination.
 
 ```sql
 select
@@ -35,6 +39,7 @@ from
 ```
 
 ### Get actor details joined with user table
+This query is used to identify the details of actors from the user table in a Jira project. It can be useful in understanding the roles and statuses of different actors in the project, which can aid project management and team coordination.
 
 ```sql
 select
