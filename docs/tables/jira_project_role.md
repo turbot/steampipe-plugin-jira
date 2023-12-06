@@ -11,6 +11,9 @@ Jira Project Roles are a flexible way to associate users and groups with project
 
 The `jira_project_role` table provides insights into project roles within Jira. As a project administrator, explore role-specific details through this table, including permissions and associated users and groups. Utilize it to manage project role membership, and to set up permission schemes, issue security levels, and notification schemes.
 
+**Important Notes**
+- Project roles are somewhat similar to groups, the main difference being that group membership is global whereas project role membership is project-specific. Additionally, group membership can only be altered by Jira administrators, whereas project role membership can be altered by project administrators.
+
 ## Examples
 
 ### Basic info
