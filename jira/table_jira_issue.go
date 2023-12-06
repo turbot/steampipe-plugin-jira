@@ -2,9 +2,11 @@ package jira
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -53,48 +55,50 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "id",
 				Description: "The ID of the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromGo(),
+				Transform:   transform.FromGo().TransformP(lowerIfCaseInsensitive, &plugin.QueryData{}),
 			},
 			{
 				Name:        "key",
 				Description: "The key of the issue.",
 				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromGo().Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "self",
 				Description: "The URL of the issue details.",
 				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromGo().Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "project_key",
 				Description: "A friendly key that identifies the project.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Project.Key"),
+				Transform:   transform.FromField("Fields.Project.Key").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "project_id",
 				Description: "A friendly key that identifies the project.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Project.ID"),
+				Transform:   transform.FromField("Fields.Project.ID").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "status",
 				Description: "Json object containing important subfields info the issue.",
 				Type:        proto.ColumnType_STRING,
 				Hydrate:     getStatusValue,
-				Transform:   transform.FromValue(),
+				Transform:   transform.FromValue().Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "status_category",
 				Description: "The status category (Open, In Progress, Done) of the ticket.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Status.StatusCategory.Name"),
+				Transform:   transform.FromField("Fields.Status.StatusCategory.Name").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "epic_key",
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromP(extractRequiredField, "epic"),
+				Transform:   transform.FromP(extractRequiredField, "epic").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "sprint_ids",
@@ -114,25 +118,25 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "assignee_account_id",
 				Description: "Account Id the user/application that the issue is assigned to work.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Assignee.AccountID"),
+				Transform:   transform.FromField("Fields.Assignee.AccountID").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "assignee_display_name",
 				Description: "Display name the user/application that the issue is assigned to work.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Assignee.DisplayName"),
+				Transform:   transform.FromField("Fields.Assignee.DisplayName").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "creator_account_id",
 				Description: "Account Id of the user/application that created the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Creator.AccountID"),
+				Transform:   transform.FromField("Fields.Creator.AccountID").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "creator_display_name",
 				Description: "Display name of the user/application that created the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Creator.DisplayName"),
+				Transform:   transform.FromField("Fields.Creator.DisplayName").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "created",
@@ -150,13 +154,13 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "description",
 				Description: "Description of the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Description"),
+				Transform:   transform.FromField("Fields.Description").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "type",
 				Description: "The name of the issue type.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Type.Name"),
+				Transform:   transform.FromField("Fields.Type.Name").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "labels",
@@ -168,25 +172,25 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "priority",
 				Description: "Priority assigned to the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Priority.Name"),
+				Transform:   transform.FromField("Fields.Priority.Name").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "project_name",
 				Description: "Name of the project to that issue belongs.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Project.Name"),
+				Transform:   transform.FromField("Fields.Project.Name").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "reporter_account_id",
 				Description: "Account Id of the user/application issue is reported.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Reporter.AccountID"),
+				Transform:   transform.FromField("Fields.Reporter.AccountID").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "reporter_display_name",
 				Description: "Display name of the user/application issue is reported.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Reporter.DisplayName"),
+				Transform:   transform.FromField("Fields.Reporter.DisplayName").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "resolution_date",
@@ -198,7 +202,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "summary",
 				Description: "Details of the user/application that created the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Fields.Summary"),
+				Transform:   transform.FromField("Fields.Summary").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "updated",
@@ -231,7 +235,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "title",
 				Description: ColumnDescriptionTitle,
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromField("Key"),
+				Transform:   transform.FromField("Key").Transform(lowerIfCaseInsensitive),
 			},
 		},
 	}
@@ -265,6 +269,23 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		MaxResults: limit,
 		Expand:     "names",
 	}
+
+	// If case is set to insensitive, transform quals to lowercase
+	// if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
+	// 	return nil, err
+	// } else if sensitivity == "insensitive" {
+	// 	for _, qual := range d.Quals {
+	// 		for _, item := range qual.Quals {
+	// 			value := item.Value.GetValue()
+	// 			if fmt.Sprintf("%T", value) == "*proto.QualValue_StringValue" {
+	// 				plugin.Logger(ctx).Debug("Qual is a string value, transforming to lowercase", value)
+	// 				newValue := strings.ToLower(item.Value.GetStringValue())
+	// 				item.Value = proto.NewQualValue(newValue)
+	// 				// d.Quals[qual.Name] = proto.NewQualValue(newValue)
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
@@ -322,6 +343,16 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	logger := plugin.Logger(ctx)
 	logger.Debug("getIssue")
 
+	// // If case is set to insensitive, transform equalsquals to lowercase
+	// if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
+	// 	return nil, err
+	// } else if sensitivity == "insensitive" {
+	// 	if key := d.EqualsQualString("key"); key != "" {
+	// 		newValue := strings.ToLower(d.EqualsQuals["key"].GetStringValue())
+	// 		d.EqualsQuals["key"] = proto.NewQualValue(newValue)
+	// 	}
+	// }
+
 	issueId := d.EqualsQualString("id")
 	key := d.EqualsQualString("key")
 
@@ -352,6 +383,15 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		plugin.Logger(ctx).Error("jira_issue.getIssue", "api_error", err)
 		return nil, err
 	}
+
+	// if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
+	// 	return nil, err
+	// } else if sensitivity == "insensitive" {
+	// 	plugin.Logger(ctx).Debug("Case set to insensitive. Transforming values to lowercase")
+	// 	issue.Key = strings.ToLower(issue.Key)
+	// } else {
+	// 	plugin.Logger(ctx).Debug("Case set to sensitive")
+	// }
 
 	epicKey := getFieldKey(ctx, d, issue.Names, "Epic Link")
 	sprintKey := getFieldKey(ctx, d, issue.Names, "Sprint")
@@ -430,6 +470,22 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 	return tags, nil
 }
 
+func lowerIfCaseInsensitive(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	queryData := plugin.QueryData{}
+	plugin.Logger(ctx).Debug("param", d.Param)
+	if sensitivity, err := getCaseSensitivity(ctx, &queryData); err != nil {
+		return nil, err
+	} else if sensitivity == "sensitive" || d.Value == nil {
+		return nil, nil
+	}
+
+	if str, ok := d.Value.(string); ok {
+		return strings.ToLower(str), nil
+	}
+
+	return d.Value, errors.New("Could not transform field value to lowercase.")
+}
+
 //// Utility Function
 
 // getFieldKey:: get key for unknown expanded fields
@@ -488,6 +544,27 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 	if err != nil {
 		err = jira.NewJiraError(resp, err)
 	}
+
+	if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
+		return nil, nil, err
+	} else if sensitivity == "insensitive" {
+		plugin.Logger(ctx).Debug("Case set to insensitive. Transforming values to lowercase")
+		for _, issue := range v.Issues {
+			plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithContext", "issue", issue)
+			// issue.Fields.Project.ID = strings.ToLower(issue.Fields.Project.ID)
+			// issue.Fields.Project.Key = strings.ToLower(issue.Fields.Project.Key)
+			// if issueStatus := d.EqualsQualString("status"); issueStatus != "" {
+			// 	issue.Fields.Status.Name = strings.ToLower(issueStatus)
+			// } else {
+			// 	issue.Fields.Status.Name = strings.ToLower(issue.Fields.Status.Name)
+			// }
+			// issue.Fields.Status.StatusCategory.Name = strings.ToLower(issue.Fields.Status.StatusCategory.Name)
+			// issue.Fields.Status.StatusCategory.Name = strings.ToLower(issue.Fields.Status.StatusCategory.Name)
+		}
+	} else {
+		plugin.Logger(ctx).Debug("Case set to sensitive")
+	}
+
 	return v, resp, err
 }
 

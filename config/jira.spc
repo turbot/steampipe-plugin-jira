@@ -23,4 +23,8 @@ connection "jira" {
   # Pagination size for the jira search API
   # Default is 50, max is 100.
   # page_size = 50
+
+  # Case sensitivity
+  # Default is case insensitive searches. Choose between "sensitive" and "insensitive"
+  # case_sensitivity = "insensitive"
 }

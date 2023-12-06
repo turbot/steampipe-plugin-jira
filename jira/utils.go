@@ -178,3 +178,18 @@ func getPageSize(_ context.Context, d *plugin.QueryData) (int, error) {
 
 	return pageSize, nil
 }
+
+func getCaseSensitivity(_ context.Context, d *plugin.QueryData) (string, error) {
+	jiraConfig := GetConfig(d.Connection)
+
+	caseSensitivity := "insensitive"
+	if jiraConfig.CaseSensitivity != nil {
+		caseSensitivity = *jiraConfig.CaseSensitivity
+	}
+
+	if caseSensitivity != "sensitive" && caseSensitivity != "insensitive" {
+		return "", errors.New("'case_sensitive' must be set to 'insensitive' or 'sensitive' in the connection configuration. Edit your connection configuration file and then restart Steampipe")
+	}
+
+	return caseSensitivity, nil
+}

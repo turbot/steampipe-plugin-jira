@@ -11,6 +11,7 @@ type jiraConfig struct {
 	Token               *string `cty:"token"`
 	PersonalAccessToken *string `cty:"personal_access_token"`
 	PageSize            *int    `cty:"page_size"`
+	CaseSensitivity     *string `cty:"case_sensitivity"`
 }
 
 var ConfigSchema = map[string]*schema.Attribute{
@@ -28,6 +29,9 @@ var ConfigSchema = map[string]*schema.Attribute{
 	},
 	"page_size": {
 		Type: schema.TypeInt,
+	},
+	"case_sensitivity": {
+		Type: schema.TypeString,
 	},
 }
 
