@@ -19,7 +19,16 @@ The `jira_project_role` table provides insights into project roles within Jira. 
 ### Basic info
 Explore the different roles within your Jira project. This can help in understanding the distribution of responsibilities and in managing team members more effectively.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  description
+from
+  jira_project_role;
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -31,7 +40,7 @@ from
 ### Get actor details
 Explore the details of different actors within your Jira project roles. This query is useful for gaining insights into the identities and account IDs of actors, aiding in project management and team coordination.
 
-```sql
+```sql+postgres
 select
   id,
   name,
@@ -41,10 +50,20 @@ from
   jira_project_role;
 ```
 
+```sql+sqlite
+select
+  id,
+  name,
+  actor_account_ids,
+  actor_names
+from
+  jira_project_role;
+```
+
 ### Get actor details joined with user table
 This query is used to identify the details of actors from the user table in a Jira project. It can be useful in understanding the roles and statuses of different actors in the project, which can aid project management and team coordination.
 
-```sql
+```sql+postgres
 select
   id,
   name,
@@ -58,4 +77,20 @@ from
   jira_user as actor
 where
   actor_id = actor.account_id;
+```
+
+```sql+sqlite
+select
+  role.id,
+  role.name,
+  actor_id.value as actor_id,
+  actor.display_name,
+  actor.account_type,
+  actor.active as actor_status
+from
+  jira_project_role as role,
+  json_each(role.actor_account_ids) as actor_id,
+  jira_user as actor
+where
+  actor_id.value = actor.account_id;
 ```

@@ -16,7 +16,17 @@ The `jira_user` table provides insights into user accounts within Jira. As a pro
 ### Basic info
 Explore which Jira users are active and understand their respective account types. This can help in managing user roles and access within your Jira environment.
 
-```sql
+```sql+postgres
+select
+  display_name,
+  account_type as type,
+  active as status,
+  account_id
+from
+  jira_user;
+```
+
+```sql+sqlite
 select
   display_name,
   account_type as type,
@@ -29,12 +39,24 @@ from
 ### Get associated names for a particular user
 Explore the group affiliations of a specific user to understand their role and access permissions within the system.
 
-```sql
+```sql+postgres
 select
   display_name,
   active as status,
   account_id,
   jsonb_pretty(group_names) as group_names
+from
+  jira_user
+where
+  display_name = 'Confluence Analytics (System)';
+```
+
+```sql+sqlite
+select
+  display_name,
+  active as status,
+  account_id,
+  group_names
 from
   jira_user
 where

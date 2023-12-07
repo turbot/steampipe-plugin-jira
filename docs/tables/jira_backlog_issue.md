@@ -16,7 +16,19 @@ The `jira_backlog_issue` table provides insights into the backlog issues within 
 ### Basic info
 Explore which projects have been created, who initiated them, their current status, and a brief summary. This information can be useful to gain an overview of ongoing projects and their progress.
 
-```sql
+```sql+postgres
+select
+  key,
+  project_key,
+  created,
+  creator_display_name,
+  status,
+  summary
+from
+  jira_backlog_issue;
+```
+
+```sql+sqlite
 select
   key,
   project_key,
@@ -31,7 +43,23 @@ from
 ### List backlog issues for a specific project
 Explore the status and details of pending tasks within a specific project to manage workload and track progress effectively. This can help in prioritizing tasks and assigning them to the right team members.
 
-```sql
+```sql+postgres
+select
+  id,
+  key,
+  project_key,
+  created,
+  creator_display_name,
+  assignee_display_name,
+  status,
+  summary
+from
+  jira_backlog_issue
+where
+  project_key = 'TEST1';
+```
+
+```sql+sqlite
 select
   id,
   key,
@@ -50,7 +78,22 @@ where
 ### List backlog issues assigned to a specific user
 Explore which backlog issues are assigned to a specific user to manage and prioritize their workload efficiently. This is useful in tracking project progress and ensuring tasks are evenly distributed among team members.
 
-```sql
+```sql+postgres
+select
+  id,
+  key,
+  summary,
+  project_key,
+  status,
+  assignee_display_name,
+  assignee_account_id
+from
+  jira_backlog_issue
+where
+  assignee_display_name = 'sayan';
+```
+
+```sql+sqlite
 select
   id,
   key,
@@ -68,7 +111,7 @@ where
 ### List backlog issues due in 30 days
 Explore which backlog issues are due within the next 30 days to better manage your project timeline and delegate tasks effectively. This can assist in prioritizing work and ensuring that deadlines are met.
 
-```sql
+```sql+postgres
 select
   id,
   key,
@@ -83,4 +126,21 @@ from
 where
   due_date > current_date
   and due_date <= (current_date + interval '30' day);
+```
+
+```sql+sqlite
+select
+  id,
+  key,
+  summary,
+  project_key,
+  status,
+  assignee_display_name,
+  assignee_account_id,
+  due_date
+from
+  jira_backlog_issue
+where
+  due_date > date('now')
+  and due_date <= date('now', '+30 day');
 ```

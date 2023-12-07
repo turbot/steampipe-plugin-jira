@@ -16,7 +16,16 @@ The `jira_priority` table provides insights into the priority levels assigned to
 ### Basic info
 Explore the priorities set in your Jira project management tool. This can help you understand how tasks are being prioritized, assisting in better project management and resource allocation.
 
-```sql
+```sql+postgres
+select
+  name,
+  id,
+  description
+from
+  jira_priority;
+```
+
+```sql+sqlite
 select
   name,
   id,
@@ -28,7 +37,18 @@ from
 ### List issues with high priority
 Discover the segments that have been assigned high priority issues in order to prioritize your team's workflow and address critical tasks more efficiently.
 
-```sql
+```sql+postgres
+select
+  id as issue_no,
+  description as issue_description,
+  assignee_display_name as assigned_to
+from
+  jira_issue
+where 
+  priority = 'High';
+```
+
+```sql+sqlite
 select
   id as issue_no,
   description as issue_description,
@@ -42,7 +62,17 @@ where
 ### Count of issues per priority
 Determine the distribution of issues across different priority levels to better understand where the majority of concerns lie. This can help in prioritizing resources and efforts for issue resolution.
 
-```sql
+```sql+postgres
+select
+  p.name as priority,
+  count(i.id) as issue_count
+from
+  jira_priority as p
+  left join jira_issue as i on i.priority = p.name
+group by p.name;
+```
+
+```sql+sqlite
 select
   p.name as priority,
   count(i.id) as issue_count

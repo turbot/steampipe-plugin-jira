@@ -16,7 +16,17 @@ The `jira_component` table provides insights into the components within a Jira p
 ### Basic info
 Explore which components of a project have the most issues, helping to identify areas that may need additional resources or attention.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  project,
+  issue_count
+from
+  jira_component;
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -29,7 +39,19 @@ from
 ### List components having issues
 Determine the areas in which components are experiencing issues, allowing you to assess and address problem areas within your projects effectively.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  project,
+  issue_count
+from
+  jira_component
+where
+  issue_count > 0;
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -44,7 +66,20 @@ where
 ### List components with no leads
 Determine the areas in your project where components lack assigned leads. This can help in identifying potential bottlenecks and ensuring responsibilities are properly delegated.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  project,
+  issue_count,
+  lead_display_name
+from
+  jira_component
+where
+  lead_display_name = '';
+```
+
+```sql+sqlite
 select
   id,
   name,

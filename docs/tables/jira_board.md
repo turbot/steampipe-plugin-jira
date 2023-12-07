@@ -16,7 +16,17 @@ The `jira_board` table provides insights into Jira Boards within Atlassian's Jir
 ### Basic info
 Explore the types of boards in your Jira project and identify any associated filters. This can help in understanding the organization and management of tasks within your project.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  type,
+  filter_id
+from
+  jira_board;
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -29,7 +39,19 @@ from
 ### List all scrum boards
 Explore which project management boards are organized using the Scrum methodology. This can help you assess the prevalence and usage of this agile framework within your organization.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  type,
+  filter_id
+from
+  jira_board
+where
+  type = 'scrum';
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -44,7 +66,7 @@ where
 ### List sprints in a board
 Explore the various sprints associated with a specific board to manage project timelines effectively. This can help in tracking progress and identifying any bottlenecks in the project workflow.
 
-```sql
+```sql+postgres
 select
   s.board_id,
   b.name as board_name,
@@ -57,5 +79,22 @@ from
   jira_sprint as s,
   jira_board as b
 where
+  s.board_id = b.id;
+```
+
+```sql+sqlite
+select
+  s.board_id,
+  b.name as board_name,
+  b.type as board_type,
+  s.id as sprint_id,
+  s.name as sprint_name,
+  start_date,
+  end_date
+from
+  jira_sprint as s
+join
+  jira_board as b
+on
   s.board_id = b.id;
 ```

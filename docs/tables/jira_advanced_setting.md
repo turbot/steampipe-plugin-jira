@@ -16,7 +16,17 @@ The `jira_advanced_setting` table provides insights into the advanced settings w
 ### Basic info
 Explore the advanced settings in your Jira instance to understand their types and associated keys. This can be useful in assessing the current configuration and identifying areas for optimization or troubleshooting.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  key,
+  type
+from
+  jira_advanced_setting;
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -29,7 +39,19 @@ from
 ### list advanced settings that supports string type value
 Explore advanced settings within Jira that support string type values. This can be useful for configuring and customizing your Jira environment to best suit your needs.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  key,
+  type
+from
+  jira_advanced_setting
+where
+  type = 'string';
+```
+
+```sql+sqlite
 select
   id,
   name,

@@ -16,7 +16,18 @@ The `jira_dashboard` table provides insights into the various dashboards availab
 ### Basic info
 Gain insights into your favorite Jira dashboards and their respective owners. This can help you understand who is responsible for the dashboards you frequently use.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  is_favourite,
+  owner_account_id,
+  owner_display_name
+from
+  jira_dashboard;
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -30,13 +41,24 @@ from
 ### Get share permissions details
 Explore which Jira dashboards have specific share permissions. This can help you understand how information is being disseminated, ensuring the right teams have access to the right data.
 
-```sql
+```sql+postgres
 select
   id,
   name,
   owner_display_name,
   popularity,
   jsonb_pretty(share_permissions) as share_permissions
+from
+  jira_dashboard;
+```
+
+```sql+sqlite
+select
+  id,
+  name,
+  owner_display_name,
+  popularity,
+  share_permissions
 from
   jira_dashboard;
 ```

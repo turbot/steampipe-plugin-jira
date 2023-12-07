@@ -16,7 +16,19 @@ The `jira_project` table provides insights into Projects within Jira. As a Proje
 ### Basic info
 Explore the different projects within your Jira environment, gaining insights into key aspects like the project's name, ID, key, lead display name, category, and description. This can be useful for understanding the scope and management of your projects.
 
-```sql
+```sql+postgres
+select
+  name,
+  id,
+  key,
+  lead_display_name,
+  project_category,
+  description
+from
+  jira_project;
+```
+
+```sql+sqlite
 select
   name,
   id,
@@ -31,7 +43,24 @@ from
 ### List all issues in a project
 Explore the status and details of all issues within a specific project. This can be useful for project management, allowing you to assess the workload and track the progress of tasks.
 
-```sql
+```sql+postgres
+select
+  id,
+  key,
+  project_id,
+  project_key,
+  created,
+  creator_display_name,
+  assignee_display_name,
+  status,
+  summary
+from
+  jira_issue
+where
+  project_key = 'TEST';
+```
+
+```sql+sqlite
 select
   id,
   key,

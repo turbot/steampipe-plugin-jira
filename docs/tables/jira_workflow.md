@@ -16,7 +16,17 @@ The `jira_workflow` table provides a detailed view of Jira Workflows within a Ji
 ### Basic info
 Analyze the settings to understand the default workflows in your Jira system, enabling you to better manage your project processes and prioritize tasks. This is particularly useful for project managers who need to assess the elements within their workflows and identify areas for improvement or customization.
 
-```sql
+```sql+postgres
+select
+  name,
+  entity_id,
+  description,
+  is_default
+from
+  jira_workflow;
+```
+
+```sql+sqlite
 select
   name,
   entity_id,
@@ -29,7 +39,7 @@ from
 ### List workflows that are not default
 Uncover the details of workflows in Jira that have been customized and are not set as default. This can be beneficial for administrators to understand the unique workflows in their system and make necessary adjustments or improvements.
 
-```sql
+```sql+postgres
 select
   name,
   entity_id,
@@ -41,10 +51,34 @@ where
   not is_default;
 ```
 
+```sql+sqlite
+select
+  name,
+  entity_id,
+  description,
+  is_default
+from
+  jira_workflow
+where
+  is_default = 0;
+```
+
 ### List workflows that are not associated with entity id
 Discover workflows that lack an associated entity ID, which could indicate incomplete or misconfigured processes within your Jira workflow system. This can be useful to identify and rectify potential issues, ensuring smoother operations.
 
-```sql
+```sql+postgres
+select
+  name,
+  entity_id,
+  description,
+  is_default
+from
+  jira_workflow
+where
+  entity_id = '';
+```
+
+```sql+sqlite
 select
   name,
   entity_id,

@@ -16,7 +16,15 @@ The `jira_group` table provides insights into the user groups within a Jira inst
 ### Basic info
 Explore the different groups present in your Jira setup, allowing you to manage and organize users more effectively. This can be particularly useful when you need to assign tasks to specific groups or manage permissions.
 
-```sql
+```sql+postgres
+select
+  name,
+  id
+from
+  jira_group;
+```
+
+```sql+sqlite
 select
   name,
   id
@@ -27,7 +35,7 @@ from
 ### Get associated users
 Discover the segments that are associated with specific users in a group. This can help in managing user access and permissions effectively.
 
-```sql
+```sql+postgres
 select
   name as group_name,
   u.display_name as user_name,
@@ -39,6 +47,23 @@ from
   jira_user as u
 where
   user_id = u.account_id
+order by
+  group_name,
+  user_name;
+```
+
+```sql+sqlite
+select
+  g.name as group_name,
+  u.display_name as user_name,
+  user_id.value as user_id,
+  u.email_address as user_email
+from
+  jira_group as g,
+  json_each(g.member_ids) as user_id,
+  jira_user as u
+where
+  user_id.value = u.account_id
 order by
   group_name,
   user_name;
