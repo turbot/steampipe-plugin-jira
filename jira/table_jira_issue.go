@@ -55,7 +55,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "id",
 				Description: "The ID of the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromGo().TransformP(lowerIfCaseInsensitive, &plugin.QueryData{}),
+				Transform:   transform.FromGo().Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "key",
@@ -86,7 +86,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Description: "Json object containing important subfields info the issue.",
 				Type:        proto.ColumnType_STRING,
 				Hydrate:     getStatusValue,
-				Transform:   transform.FromValue().Transform(lowerIfCaseInsensitive),
+				Transform:   transform.FromValue(),
 			},
 			{
 				Name:        "status_category",
@@ -270,23 +270,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		Expand:     "names",
 	}
 
-	// If case is set to insensitive, transform quals to lowercase
-	// if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
-	// 	return nil, err
-	// } else if sensitivity == "insensitive" {
-	// 	for _, qual := range d.Quals {
-	// 		for _, item := range qual.Quals {
-	// 			value := item.Value.GetValue()
-	// 			if fmt.Sprintf("%T", value) == "*proto.QualValue_StringValue" {
-	// 				plugin.Logger(ctx).Debug("Qual is a string value, transforming to lowercase", value)
-	// 				newValue := strings.ToLower(item.Value.GetStringValue())
-	// 				item.Value = proto.NewQualValue(newValue)
-	// 				// d.Quals[qual.Name] = proto.NewQualValue(newValue)
-	// 			}
-	// 		}
-	// 	}
-	// }
-
 	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
 
@@ -309,11 +292,20 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			return nil, err
 		}
 
+		sensitivity, err := getCaseSensitivity(ctx, d)
+		if err != nil {
+			return nil, err
+		}
+		plugin.Logger(ctx).Debug("jira_issue.listIssues", "case_sensitivity", sensitivity)
+
 		for _, issue := range issues {
 			if issueCount > issueLimit {
 				plugin.Logger(ctx).Debug("Maximum number of issues reached", issueLimit)
 				return nil, nil
 			}
+
+			issue.Fields.Unknowns["sensitivity"] = sensitivity
+
 			// plugin.Logger(ctx).Debug("Issue output:", issue)
 			// plugin.Logger(ctx).Debug("Issue names output:", names)
 			keys := map[string]string{
@@ -342,16 +334,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	logger := plugin.Logger(ctx)
 	logger.Debug("getIssue")
-
-	// // If case is set to insensitive, transform equalsquals to lowercase
-	// if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
-	// 	return nil, err
-	// } else if sensitivity == "insensitive" {
-	// 	if key := d.EqualsQualString("key"); key != "" {
-	// 		newValue := strings.ToLower(d.EqualsQuals["key"].GetStringValue())
-	// 		d.EqualsQuals["key"] = proto.NewQualValue(newValue)
-	// 	}
-	// }
 
 	issueId := d.EqualsQualString("id")
 	key := d.EqualsQualString("key")
@@ -384,14 +366,12 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, err
 	}
 
-	// if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
-	// 	return nil, err
-	// } else if sensitivity == "insensitive" {
-	// 	plugin.Logger(ctx).Debug("Case set to insensitive. Transforming values to lowercase")
-	// 	issue.Key = strings.ToLower(issue.Key)
-	// } else {
-	// 	plugin.Logger(ctx).Debug("Case set to sensitive")
-	// }
+	if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
+		return nil, err
+	} else {
+		plugin.Logger(ctx).Debug("jira_issue.getIssue", "case_sensitivity", sensitivity)
+		issue.Fields.Unknowns["sensitivity"] = sensitivity
+	}
 
 	epicKey := getFieldKey(ctx, d, issue.Names, "Epic Link")
 	sprintKey := getFieldKey(ctx, d, issue.Names, "Sprint")
@@ -406,12 +386,18 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 
 func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
 	issue := h.Item.(IssueInfo)
-	issueStauus := d.EqualsQualString("status")
+	status := d.EqualsQualString("status")
+	sensitivity := issue.Fields.Unknowns["sensitivity"]
 
-	if issueStauus != "" {
-		return issueStauus, nil
+	if status == "" {
+		status = issue.Fields.Status.Name
 	}
-	return issue.Fields.Status.Name, nil
+
+	if sensitivity == "sensitive" {
+		return status, nil
+	} else {
+		return strings.ToLower(status), nil
+	}
 }
 
 //// TRANSFORM FUNCTION
@@ -470,22 +456,6 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 	return tags, nil
 }
 
-func lowerIfCaseInsensitive(ctx context.Context, d *transform.TransformData) (interface{}, error) {
-	queryData := plugin.QueryData{}
-	plugin.Logger(ctx).Debug("param", d.Param)
-	if sensitivity, err := getCaseSensitivity(ctx, &queryData); err != nil {
-		return nil, err
-	} else if sensitivity == "sensitive" || d.Value == nil {
-		return nil, nil
-	}
-
-	if str, ok := d.Value.(string); ok {
-		return strings.ToLower(str), nil
-	}
-
-	return d.Value, errors.New("Could not transform field value to lowercase.")
-}
-
 //// Utility Function
 
 // getFieldKey:: get key for unknown expanded fields
@@ -504,6 +474,24 @@ func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]stri
 		}
 	}
 	return ""
+}
+
+// lowerIfCaseInsensitive:: used for columns of type proto.ColumnType_STRING
+// attempts to convert the value to lowercase if it is not nil, otherwise returns nil
+func lowerIfCaseInsensitive(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issue := d.HydrateItem.(IssueInfo)
+	sensitivity := issue.Fields.Unknowns["sensitivity"]
+	if sensitivity == "sensitive" {
+		return d.Value, nil
+	}
+
+	if str, ok := d.Value.(string); ok {
+		return strings.ToLower(str), nil
+	} else if d.Value == nil {
+		return d.Value, nil
+	}
+
+	return d.Value, errors.New("Could not transform field value to lowercase.")
 }
 
 func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, options *jira.SearchOptions) (*searchResult, *jira.Response, error) {
@@ -543,26 +531,6 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithContext", "res_body", string(body))
 	if err != nil {
 		err = jira.NewJiraError(resp, err)
-	}
-
-	if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
-		return nil, nil, err
-	} else if sensitivity == "insensitive" {
-		plugin.Logger(ctx).Debug("Case set to insensitive. Transforming values to lowercase")
-		for _, issue := range v.Issues {
-			plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithContext", "issue", issue)
-			// issue.Fields.Project.ID = strings.ToLower(issue.Fields.Project.ID)
-			// issue.Fields.Project.Key = strings.ToLower(issue.Fields.Project.Key)
-			// if issueStatus := d.EqualsQualString("status"); issueStatus != "" {
-			// 	issue.Fields.Status.Name = strings.ToLower(issueStatus)
-			// } else {
-			// 	issue.Fields.Status.Name = strings.ToLower(issue.Fields.Status.Name)
-			// }
-			// issue.Fields.Status.StatusCategory.Name = strings.ToLower(issue.Fields.Status.StatusCategory.Name)
-			// issue.Fields.Status.StatusCategory.Name = strings.ToLower(issue.Fields.Status.StatusCategory.Name)
-		}
-	} else {
-		plugin.Logger(ctx).Debug("Case set to sensitive")
 	}
 
 	return v, resp, err
