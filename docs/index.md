@@ -105,7 +105,4 @@ export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
 export JIRA_PERSONAL_ACCESS_TOKEN="MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 ```
 
-## Get involved
 
-- Open source: https://github.com/turbot/steampipe-plugin-jira
-- Community: [Join #steampipe on Slack →](https://turbot.com/community/join)
