@@ -8,6 +8,7 @@ short_name: "jira"
 description: "Steampipe plugin for querying sprints, issues, epics and more from Jira."
 og_description: "Query Jira with SQL! Open source CLI. No DB required."
 og_image: "/images/plugins/turbot/jira-social-graphic.png"
+engines: ["steampipe", "sqlite", "postgres", "export"]
 ---
 
 # Jira + Steampipe
