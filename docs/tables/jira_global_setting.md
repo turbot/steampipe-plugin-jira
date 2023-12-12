@@ -1,18 +1,12 @@
-# Table: jira_global_setting
+---
+title: "Steampipe Table: jira_global_setting - Query Jira Global Settings using SQL"
+description: "Allows users to query Jira Global Settings, providing insights into system wide settings and configurations."
+---
 
-Jira global settings contains options to check and configure settings in your Jira installation that are applied globally to all users.
+# Table: jira_global_setting - Query Jira Global Settings using SQL
 
-## Example
+Jira Global Settings is a set of system-wide configurations in the Jira tool that allows administrators to control various aspects such as user permissions, security settings, and other system configurations. It provides a centralized way to manage and control the overall behavior and functionalities of the Jira system. Jira Global Settings help to maintain the system's integrity, security, and performance by managing the settings at a global level.
 
-### Basic info
+## Table Usage Guide
 
-```sql
-select
-  voting_enabled,
-  watching_enabled,
-  sub_tasks_enabled,
-  time_tracking_enabled,
-  time_tracking_configuration
-from
-  jira_global_setting;
-```
+The `jira_global_setting` table provides insights into global settings within Jira. As a Jira administrator, explore system-wide details through this table, including security settings, user permissions, and other system configurations. Utilize it to uncover information about the overall behavior and functionalities of the Jira system, as well as to maintain the system's integrity, security, and performance.

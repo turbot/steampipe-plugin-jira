@@ -8,6 +8,7 @@ short_name: "jira"
 description: "Steampipe plugin for querying sprints, issues, epics and more from Jira."
 og_description: "Query Jira with SQL! Open source CLI. No DB required."
 og_image: "/images/plugins/turbot/jira-social-graphic.png"
+engines: ["steampipe", "sqlite", "postgres", "export"]
 ---
 
 # Jira + Steampipe
@@ -15,7 +16,7 @@ og_image: "/images/plugins/turbot/jira-social-graphic.png"
 [Jira](https://www.atlassian.com/software/jira) provides on-demand cloud computing platforms and APIs to plan,
 track, and release great software.
 
-[Steampipe](https://steampipe.io) is an open source CLI to instantly query cloud APIs using SQL.
+[Steampipe](https://steampipe.io) is an open-source zero-ETL engine to instantly query cloud APIs using SQL.
 
 List users in your Jira account:
 
@@ -104,7 +105,4 @@ export JIRA_TOKEN=8WqcdT0rvIZpCjtDqReF48B1
 export JIRA_PERSONAL_ACCESS_TOKEN="MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
 ```
 
-## Get involved
 
-- Open source: https://github.com/turbot/steampipe-plugin-jira
-- Community: [Join #steampipe on Slack →](https://turbot.com/community/join)
