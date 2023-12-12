@@ -16,7 +16,7 @@ engines: ["steampipe", "sqlite", "postgres", "export"]
 [Jira](https://www.atlassian.com/software/jira) provides on-demand cloud computing platforms and APIs to plan,
 track, and release great software.
 
-[Steampipe](https://steampipe.io) is an open source CLI to instantly query cloud APIs using SQL.
+[Steampipe](https://steampipe.io) is an open-source zero-ETL engine to instantly query cloud APIs using SQL.
 
 List users in your Jira account:
 
