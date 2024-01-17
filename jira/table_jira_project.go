@@ -158,6 +158,8 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 		query = fmt.Sprintf("&%stypeKey=%s", query, d.EqualsQualString("project_type_key"))
 	}
 
+	projectCount := 1
+	projectLimit := 200
 	last := 0
 	for {
 		apiEndpoint := fmt.Sprintf(
@@ -186,11 +188,16 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 		}
 
 		for _, project := range projectList.Values {
+			if projectCount > projectLimit {
+				plugin.Logger(ctx).Debug("Maximum number of projects reached", projectLimit)
+				return nil, nil
+			}
 			d.StreamListItem(ctx, project)
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
+			projectCount += 1
 		}
 		last = projectList.StartAt + len(projectList.Values)
 		if projectList.IsLast {
