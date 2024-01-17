@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/andygrunwald/go-jira"
@@ -134,7 +135,18 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 			return nil, err
 		}
 
+		sensitivity, err := getCaseSensitivity(ctx, d)
+		if err != nil {
+			return nil, err
+		}
+		plugin.Logger(ctx).Debug("jira_sprint.listSprints", "case_sensitivity", sensitivity)
+
 		for _, sprint := range listResult.Values {
+			if sensitivity == "insensitive" {
+				sprint.Name = strings.ToLower(sprint.Name)
+				sprint.Self = strings.ToLower(sprint.Self)
+				sprint.State = strings.ToLower(sprint.State)
+			}
 			d.StreamListItem(ctx, SprintItemInfo{int64(board.ID), sprint})
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
