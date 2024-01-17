@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -172,7 +173,28 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 			return nil, err
 		}
 
+		sensitivity, err := getCaseSensitivity(ctx, d)
+		if err != nil {
+			return nil, err
+		}
+		plugin.Logger(ctx).Debug("jira_component.listComponents", "case_sensitivity", sensitivity)
+
 		for _, component := range listResult.Values {
+			if sensitivity == "insensitive" {
+				component.RealAssigneeType = strings.ToLower(component.RealAssigneeType)
+				component.Description = strings.ToLower(component.Description)
+				component.Project = strings.ToLower(component.Project)
+				component.Self = strings.ToLower(component.Self)
+				component.AssigneeType = strings.ToLower(component.AssigneeType)
+				component.Name = strings.ToLower(component.Name)
+				component.Id = strings.ToLower(component.Id)
+				component.Assignee.AccountID = strings.ToLower(component.Assignee.AccountID)
+				component.Assignee.DisplayName = strings.ToLower(component.Assignee.DisplayName)
+				component.Lead.AccountID = strings.ToLower(component.Lead.AccountID)
+				component.Lead.DisplayName = strings.ToLower(component.Lead.DisplayName)
+				component.RealAssignee.DisplayName = strings.ToLower(component.RealAssignee.DisplayName)
+				component.RealAssignee.AccountID = strings.ToLower(component.RealAssignee.AccountID)
+			}
 			d.StreamListItem(ctx, component)
 
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
@@ -219,6 +241,28 @@ func getComponent(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 		}
 		plugin.Logger(ctx).Error("jira_component.getComponent", "api_error", err)
 		return nil, err
+	}
+
+	sensitivity, err := getCaseSensitivity(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	plugin.Logger(ctx).Debug("jira_component.getComponent", "case_sensitivity", sensitivity)
+
+	if sensitivity == "insensitive" {
+		result.RealAssigneeType = strings.ToLower(result.RealAssigneeType)
+		result.Description = strings.ToLower(result.Description)
+		result.Project = strings.ToLower(result.Project)
+		result.Self = strings.ToLower(result.Self)
+		result.AssigneeType = strings.ToLower(result.AssigneeType)
+		result.Name = strings.ToLower(result.Name)
+		result.Id = strings.ToLower(result.Id)
+		result.Assignee.AccountID = strings.ToLower(result.Assignee.AccountID)
+		result.Assignee.DisplayName = strings.ToLower(result.Assignee.DisplayName)
+		result.Lead.AccountID = strings.ToLower(result.Lead.AccountID)
+		result.Lead.DisplayName = strings.ToLower(result.Lead.DisplayName)
+		result.RealAssignee.DisplayName = strings.ToLower(result.RealAssignee.DisplayName)
+		result.RealAssignee.AccountID = strings.ToLower(result.RealAssignee.AccountID)
 	}
 
 	return result, nil
