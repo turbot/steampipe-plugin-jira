@@ -108,7 +108,7 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	}
 
 	sprintCount := 1
-	sprintLimit := 50
+	sprintLimit := 25
 	last := 0
 	for {
 		apiEndpoint := fmt.Sprintf(
