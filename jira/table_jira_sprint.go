@@ -107,6 +107,8 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 		}
 	}
 
+	sprintCount := 1
+	sprintLimit := 50
 	last := 0
 	for {
 		apiEndpoint := fmt.Sprintf(
@@ -142,6 +144,10 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 		plugin.Logger(ctx).Debug("jira_sprint.listSprints", "case_sensitivity", sensitivity)
 
 		for _, sprint := range listResult.Values {
+			if sprintCount > sprintLimit {
+				plugin.Logger(ctx).Debug("Maximum number of sprints reached", sprintLimit)
+				return nil, nil
+			}
 			if sensitivity == "insensitive" {
 				sprint.Name = strings.ToLower(sprint.Name)
 				sprint.Self = strings.ToLower(sprint.Self)
@@ -152,6 +158,7 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
+			sprintCount += 1
 		}
 
 		last = listResult.StartAt + len(listResult.Values)

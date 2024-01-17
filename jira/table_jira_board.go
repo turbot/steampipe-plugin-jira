@@ -83,7 +83,7 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	}
 
 	boardCount := 1
-	boardLimit := 500
+	boardLimit := 300
 	last := 0
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
