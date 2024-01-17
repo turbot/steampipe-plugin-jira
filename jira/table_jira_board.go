@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"io"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -109,7 +110,18 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 		total := res.Total
 
+		sensitivity, err := getCaseSensitivity(ctx, d)
+		if err != nil {
+			return nil, err
+		}
+		plugin.Logger(ctx).Debug("jira_board.listBoards", "case_sensitivity", sensitivity)
+
 		for _, board := range boardList.Values {
+			if sensitivity == "insensitive" {
+				board.Name = strings.ToLower(board.Name)
+				board.Self = strings.ToLower(board.Self)
+				board.Type = strings.ToLower(board.Type)
+			}
 			d.StreamListItem(ctx, board)
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
@@ -146,6 +158,18 @@ func getBoard(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		}
 		plugin.Logger(ctx).Error("jira_board.getBoard", "api_error", err)
 		return nil, err
+	}
+
+	sensitivity, err := getCaseSensitivity(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	plugin.Logger(ctx).Debug("jira_board.getBoard", "case_sensitivity", sensitivity)
+
+	if sensitivity == "insensitive" {
+		board.Name = strings.ToLower(board.Name)
+		board.Self = strings.ToLower(board.Self)
+		board.Type = strings.ToLower(board.Type)
 	}
 
 	return *board, err
