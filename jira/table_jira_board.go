@@ -82,6 +82,8 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		return nil, err
 	}
 
+	boardCount := 1
+	boardLimit := 300
 	last := 0
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
@@ -117,6 +119,10 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		plugin.Logger(ctx).Debug("jira_board.listBoards", "case_sensitivity", sensitivity)
 
 		for _, board := range boardList.Values {
+			if boardCount > boardLimit {
+				plugin.Logger(ctx).Debug("Maximum number of boards reached", boardLimit)
+				return nil, nil
+			}
 			if sensitivity == "insensitive" {
 				board.Name = strings.ToLower(board.Name)
 				board.Self = strings.ToLower(board.Self)
@@ -127,6 +133,7 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
 			}
+			boardCount += 1
 		}
 
 		last = res.StartAt + len(boardList.Values)
