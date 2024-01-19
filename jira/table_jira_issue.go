@@ -247,7 +247,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 	last := 0
 	issueCount := 1
-	issueLimit := 500
+	issueLimit := 300
 	pageSize, err := getPageSize(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "page_size", err)
