@@ -137,7 +137,7 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		last = res.StartAt + len(boardList.Values)
-		if last >= total {
+		if last >= total || boardCount >= boardLimit {
 			return nil, nil
 		}
 	}

@@ -211,7 +211,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
-		if listResult.IsLast {
+		if listResult.IsLast || componentCount >= componentLimit {
 			return nil, nil
 		}
 	}
