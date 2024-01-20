@@ -193,3 +193,78 @@ func getCaseSensitivity(_ context.Context, d *plugin.QueryData) (string, error) 
 
 	return caseSensitivity, nil
 }
+
+func getIssueLimit(_ context.Context, d *plugin.QueryData) (int, error) {
+	jiraConfig := GetConfig(d.Connection)
+
+	issueLimit := 300
+	if jiraConfig.IssueLimit != nil {
+		issueLimit = *jiraConfig.IssueLimit
+	}
+
+	if issueLimit < 1 {
+		return -1, errors.New("'issue_limit' must be greater than 0. Edit your connection configuration file and then restart Steampipe")
+	}
+
+	return issueLimit, nil
+}
+
+func getComponentLimit(_ context.Context, d *plugin.QueryData) (int, error) {
+	jiraConfig := GetConfig(d.Connection)
+
+	componentLimit := 200
+	if jiraConfig.ComponentLimit != nil {
+		componentLimit = *jiraConfig.ComponentLimit
+	}
+
+	if componentLimit < 1 {
+		return -1, errors.New("'component_limit' must be greater than 0. Edit your connection configuration file and then restart Steampipe")
+	}
+
+	return componentLimit, nil
+}
+
+func getProjectLimit(_ context.Context, d *plugin.QueryData) (int, error) {
+	jiraConfig := GetConfig(d.Connection)
+
+	projectLimit := 200
+	if jiraConfig.ProjectLimit != nil {
+		projectLimit = *jiraConfig.ProjectLimit
+	}
+
+	if projectLimit < 1 {
+		return -1, errors.New("'project_limit' must be greater than 0. Edit your connection configuration file and then restart Steampipe")
+	}
+
+	return projectLimit, nil
+}
+
+func getBoardLimit(_ context.Context, d *plugin.QueryData) (int, error) {
+	jiraConfig := GetConfig(d.Connection)
+
+	boardLimit := 300
+	if jiraConfig.BoardLimit != nil {
+		boardLimit = *jiraConfig.BoardLimit
+	}
+
+	if boardLimit < 1 {
+		return -1, errors.New("'board_limit' must be greater than 0. Edit your connection configuration file and then restart Steampipe")
+	}
+
+	return boardLimit, nil
+}
+
+func getSprintLimit(_ context.Context, d *plugin.QueryData) (int, error) {
+	jiraConfig := GetConfig(d.Connection)
+
+	sprintLimit := 25
+	if jiraConfig.SprintLimit != nil {
+		sprintLimit = *jiraConfig.SprintLimit
+	}
+
+	if sprintLimit < 1 {
+		return -1, errors.New("'sprint_limit' must be greater than 0. Edit your connection configuration file and then restart Steampipe")
+	}
+
+	return sprintLimit, nil
+}

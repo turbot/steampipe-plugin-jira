@@ -11,6 +11,11 @@ type jiraConfig struct {
 	PersonalAccessToken *string `hcl:"personal_access_token"`
 	PageSize            *int    `cty:"page_size"`
 	CaseSensitivity     *string `cty:"case_sensitivity"`
+	IssueLimit          *int    `cty:"issue_limit"`
+	ComponentLimit      *int    `cty:"component_limit"`
+	ProjectLimit        *int    `cty:"project_limit"`
+	BoardLimit          *int    `cty:"board_limit"`
+	SprintLimit         *int    `cty:"sprint_limit"`
 }
 
 func ConfigInstance() interface{} {

@@ -159,7 +159,11 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 	}
 
 	projectCount := 1
-	projectLimit := 200
+	projectLimit, err := getProjectLimit(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_project.listProjects", "project_limit", err)
+		return nil, err
+	}
 	last := 0
 	for {
 		apiEndpoint := fmt.Sprintf(

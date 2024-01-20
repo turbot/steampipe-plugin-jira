@@ -108,7 +108,11 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 	}
 
 	sprintCount := 1
-	sprintLimit := 25
+	sprintLimit, err := getSprintLimit(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_sprint.listSprints", "sprint_limit", err)
+		return nil, err
+	}
 	last := 0
 	for {
 		apiEndpoint := fmt.Sprintf(

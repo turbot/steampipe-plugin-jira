@@ -27,4 +27,24 @@ connection "jira" {
   # Case sensitivity
   # Default is case insensitive searches. Choose between "sensitive" and "insensitive"
   # case_sensitivity = "insensitive"
+
+  # Issue Row Limit
+  # Default is 300
+  issue_limit = 300
+
+  # Component Row Limit
+  # Default is 200
+  component_limit = 200
+
+  # Project Row Limit
+  # Default is 200
+  project_limit = 200
+
+  # Board Row Limit
+  # Default is 300
+  board_limit = 300
+
+  # Sprint Row Limit
+  # Default is 25
+  sprint_limit = 25
 }
