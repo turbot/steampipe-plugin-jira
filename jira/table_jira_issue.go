@@ -525,7 +525,7 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 		"created",
 		"duedate",
 		"description",
-		"issueType",
+		"issuetype",
 		"labels",
 		"priority",
 		"project",
