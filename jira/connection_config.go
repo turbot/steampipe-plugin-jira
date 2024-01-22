@@ -12,6 +12,11 @@ type jiraConfig struct {
 	PersonalAccessToken *string `cty:"personal_access_token"`
 	PageSize            *int    `cty:"page_size"`
 	CaseSensitivity     *string `cty:"case_sensitivity"`
+	IssueLimit          *int    `cty:"issue_limit"`
+	ComponentLimit      *int    `cty:"component_limit"`
+	ProjectLimit        *int    `cty:"project_limit"`
+	BoardLimit          *int    `cty:"board_limit"`
+	SprintLimit         *int    `cty:"sprint_limit"`
 }
 
 var ConfigSchema = map[string]*schema.Attribute{
@@ -32,6 +37,21 @@ var ConfigSchema = map[string]*schema.Attribute{
 	},
 	"case_sensitivity": {
 		Type: schema.TypeString,
+	},
+	"issue_limit": {
+		Type: schema.TypeInt,
+	},
+	"component_limit": {
+		Type: schema.TypeInt,
+	},
+	"project_limit": {
+		Type: schema.TypeInt,
+	},
+	"board_limit": {
+		Type: schema.TypeInt,
+	},
+	"sprint_limit": {
+		Type: schema.TypeInt,
 	},
 }
 

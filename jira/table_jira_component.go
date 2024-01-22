@@ -141,7 +141,11 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 	}
 
 	componentCount := 1
-	componentLimit := 200
+	componentLimit, err := getComponentLimit(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_component.listComponents", "component_limit", err)
+		return nil, err
+	}
 	last := 0
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
@@ -211,7 +215,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
-		if listResult.IsLast {
+		if listResult.IsLast || componentCount >= componentLimit {
 			return nil, nil
 		}
 	}

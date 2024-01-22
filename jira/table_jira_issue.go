@@ -247,7 +247,11 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 	last := 0
 	issueCount := 1
-	issueLimit := 500
+	issueLimit, err := getIssueLimit(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues", "issue_limit", err)
+		return nil, err
+	}
 	pageSize, err := getPageSize(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "page_size", err)
@@ -321,7 +325,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		last = searchResult.StartAt + len(issues)
-		if last >= searchResult.Total {
+		if last >= searchResult.Total || issueCount >= issueLimit {
 			return nil, nil
 		} else {
 			options.StartAt = last
