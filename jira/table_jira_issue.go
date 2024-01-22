@@ -516,6 +516,28 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 	}
 	uv.Add("expand", options.Expand)
 
+	// Specify fields to prevent getting more data than necessary
+	fields := []string{
+		"project",
+		"status",
+		"assignee",
+		"creator",
+		"created",
+		"duedate",
+		"description",
+		"issueType",
+		"labels",
+		"priority",
+		"project",
+		"reporter",
+		"resolutiondate",
+		"summary",
+		"updated",
+		"components",
+	}
+	fieldString := strings.Join(fields, ",")
+	uv.Add("fields", fieldString)
+
 	u.RawQuery = uv.Encode()
 
 	client, err := connect(ctx, d)
