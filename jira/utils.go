@@ -197,7 +197,7 @@ func getCaseSensitivity(_ context.Context, d *plugin.QueryData) (string, error) 
 func getIssueLimit(_ context.Context, d *plugin.QueryData) (int, error) {
 	jiraConfig := GetConfig(d.Connection)
 
-	issueLimit := 300
+	issueLimit := 500
 	if jiraConfig.IssueLimit != nil {
 		issueLimit = *jiraConfig.IssueLimit
 	}
