@@ -539,11 +539,14 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 	u := url.URL{
 		Path: "rest/api/3/expression/eval",
 	}
+	uv := url.Values{}
+	uv.Add("expand", "meta.complexity")
+	u.RawQuery = uv.Encode()
 
 	if jql == "" {
 		jql = "order by created DESC"
 	}
-	maxResults := options.MaxResults
+	maxResults, err := calculateMaxResults(ctx, client, d, u.String(), jql)
 	if maxResults == 0 {
 		maxResults = 100
 	}
@@ -578,10 +581,6 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 		return nil, nil, jira.NewJiraError(resp, err)
 	}
 
-	v := new(searchResult)
-	v.StartAt = expressionResult.Meta.Issues.Jql.StartAt
-	v.MaxResults = expressionResult.Meta.Issues.Jql.MaxResults
-	v.Total = expressionResult.Meta.Issues.Jql.TotalCount
 	// convert expressionResults to jira issues
 	var jiraIssues []jira.Issue
 	for _, value := range expressionResult.Values {
@@ -625,6 +624,11 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 		n.Fields = f
 		jiraIssues = append(jiraIssues, *n)
 	}
+
+	v := new(searchResult)
+	v.StartAt = expressionResult.Meta.Issues.Jql.StartAt
+	v.MaxResults = expressionResult.Meta.Issues.Jql.MaxResults
+	v.Total = expressionResult.Meta.Issues.Jql.TotalCount
 	v.Issues = jiraIssues
 
 	return v, resp, err
@@ -666,6 +670,51 @@ func getKeyString(ctx context.Context, columns []string) string {
 		}
 	}
 	return strings.Join(keys, ",")
+}
+
+func calculateMaxResults(ctx context.Context, client *jira.Client, d *plugin.QueryData, url string, jql string) (int, error) {
+	resultAmount := 2
+	requestBody := map[string]interface{}{
+		"context": map[string]interface{}{
+			"issues": map[string]interface{}{
+				"jql": map[string]interface{}{
+					"query":      jql,
+					"maxResults": resultAmount,
+				},
+			},
+		},
+		"expression": "issues.map(issue => {" + getKeyString(ctx, d.QueryContext.Columns) + "})",
+	}
+
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.calculateMaxResults", "req_body", requestBody)
+	req, err := client.NewRequestWithContext(ctx, "POST", url, requestBody)
+	if err != nil {
+		return 0, err
+	}
+
+	// set headers
+	req.Header.Set("Authorization", "a2V2aW4ueWFrYXJAdGhvdWdodHNwb3QuY29tOkFUQVRUM3hGZkdGMHZObUl6WkRxdHk5VzVlb0tEQTRXZ3BOS3ZvY3JiU0VZUDZzNWJHVXpxem1ReTl4VjZTZktVRjdNTUZQWUdEZDNIX0M5ckRDTllSTmtWRV9fWXR1RG5GdUxOTkt0dTg5QzNGRXU0X0NqTVQ1WU1KeXJ2d2lsdDAyMWREcG1ZbFpTUHFEMGhWaFNoZG05M05ENzZvSktmcEIxUHFlNG12bmdDX0dYM0dReElidz1BODRFMUVDNA==")
+	req.Header.Set("Cookie", "atlassian.xsrf.token=3c877ed29c9e7b0db4a9d2df1bd2404e7cad0cd7_lin")
+
+	expressionResult := new(issueExpressionResult)
+	resp, err := client.Do(req, expressionResult)
+	body, _ := io.ReadAll(resp.Body)
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "res_body", string(body))
+	if err != nil {
+		return 0, jira.NewJiraError(resp, err)
+	}
+
+	primitiveValuePortion := expressionResult.Meta.Complexity.PrimitiveValues.Value / resultAmount
+	primitiveValueMax := expressionResult.Meta.Complexity.PrimitiveValues.Limit/primitiveValuePortion - primitiveValuePortion
+
+	stepPortion := expressionResult.Meta.Complexity.Steps.Value / resultAmount
+	stepMax := expressionResult.Meta.Complexity.Steps.Limit/stepPortion - stepPortion
+
+	if primitiveValueMax < stepMax {
+		return primitiveValueMax, nil
+	} else {
+		return stepMax, nil
+	}
 }
 
 func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, options *jira.SearchOptions) (*searchResult, *jira.Response, error) {
@@ -785,6 +834,24 @@ type issueExpressionValue struct {
 type issueExpressionResult struct {
 	Values []issueExpressionValue `json:"value" structs:"value"`
 	Meta   struct {
+		Complexity struct {
+			Steps struct {
+				Value int `json:"value" structs:"value"`
+				Limit int `json:"limit" structs:"limit"`
+			} `json:"steps" structs:"steps"`
+			ExpensiveOperations struct {
+				Value int `json:"value" structs:"value"`
+				Limit int `json:"limit" structs:"limit"`
+			} `json:"expensiveOperations" structs:"expensiveOperations"`
+			Beans struct {
+				Value int `json:"value" structs:"value"`
+				Limit int `json:"limit" structs:"limit"`
+			} `json:"beans" structs:"beans"`
+			PrimitiveValues struct {
+				Value int `json:"value" structs:"value"`
+				Limit int `json:"limit" structs:"limit"`
+			} `json:"primitiveValues" structs:"primitiveValues"`
+		} `json:"complexity" structs:"complexity"`
 		Issues struct {
 			Jql struct {
 				StartAt    int `json:"startAt" structs:"startAt"`
