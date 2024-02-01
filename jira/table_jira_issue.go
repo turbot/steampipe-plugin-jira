@@ -263,6 +263,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 	last := 0
 	issueCount := 1
+	numLoops := 5
 	issueLimit, err := getIssueLimit(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "issue_limit", err)
@@ -299,6 +300,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		var err error
 		if useExpression {
 			searchResult, res, err = searchWithExpression(ctx, d, jql, &options)
+			issueLimit = searchResult.MaxResults * numLoops
 		} else {
 			searchResult, res, err = searchWithContext(ctx, d, jql, &options)
 		}
@@ -355,7 +357,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		last = searchResult.StartAt + len(issues)
-		if last >= searchResult.Total || issueCount >= issueLimit {
+		if last >= searchResult.Total {
+			return nil, nil
+		} else if issueCount >= issueLimit {
+			plugin.Logger(ctx).Debug("Maximum number of issues reached", issueLimit)
 			return nil, nil
 		} else {
 			options.StartAt = last
