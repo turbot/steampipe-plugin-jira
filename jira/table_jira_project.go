@@ -204,7 +204,10 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 			projectCount += 1
 		}
 		last = projectList.StartAt + len(projectList.Values)
-		if projectList.IsLast || projectCount >= projectLimit {
+		if projectList.IsLast {
+			return nil, nil
+		} else if projectCount >= projectLimit {
+			plugin.Logger(ctx).Debug("Maximum number of projects reached", projectLimit)
 			return nil, nil
 		}
 	}

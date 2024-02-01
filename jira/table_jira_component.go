@@ -215,7 +215,10 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
-		if listResult.IsLast || componentCount >= componentLimit {
+		if listResult.IsLast {
+			return nil, nil
+		} else if componentCount >= componentLimit {
+			plugin.Logger(ctx).Debug("Maximum number of components reached", componentLimit)
 			return nil, nil
 		}
 	}

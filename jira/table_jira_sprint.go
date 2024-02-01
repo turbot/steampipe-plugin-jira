@@ -166,7 +166,10 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
-		if listResult.IsLast || sprintCount >= sprintLimit {
+		if listResult.IsLast {
+			return nil, nil
+		} else if sprintCount >= sprintLimit {
+			plugin.Logger(ctx).Debug("Maximum number of sprints reached", sprintLimit)
 			return nil, nil
 		}
 	}

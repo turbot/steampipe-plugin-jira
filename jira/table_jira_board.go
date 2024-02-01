@@ -141,7 +141,10 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		last = res.StartAt + len(boardList.Values)
-		if last >= total || boardCount >= boardLimit {
+		if last >= total {
+			return nil, nil
+		} else if boardCount >= boardLimit {
+			plugin.Logger(ctx).Debug("Maximum number of boards reached", boardLimit)
 			return nil, nil
 		}
 	}
