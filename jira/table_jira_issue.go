@@ -306,6 +306,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "search_error", err)
 			return nil, err
 		}
+
 		issues := searchResult.Issues
 		var names map[string]string
 		if !useExpression {
@@ -547,9 +548,6 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 		jql = "order by created DESC"
 	}
 	maxResults, err := calculateMaxResults(ctx, client, d, u.String(), jql)
-	if maxResults == 0 {
-		maxResults = 100
-	}
 	requestBody := map[string]interface{}{
 		"context": map[string]interface{}{
 			"issues": map[string]interface{}{
@@ -568,10 +566,6 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// set headers
-	req.Header.Set("Authorization", "a2V2aW4ueWFrYXJAdGhvdWdodHNwb3QuY29tOkFUQVRUM3hGZkdGMHZObUl6WkRxdHk5VzVlb0tEQTRXZ3BOS3ZvY3JiU0VZUDZzNWJHVXpxem1ReTl4VjZTZktVRjdNTUZQWUdEZDNIX0M5ckRDTllSTmtWRV9fWXR1RG5GdUxOTkt0dTg5QzNGRXU0X0NqTVQ1WU1KeXJ2d2lsdDAyMWREcG1ZbFpTUHFEMGhWaFNoZG05M05ENzZvSktmcEIxUHFlNG12bmdDX0dYM0dReElidz1BODRFMUVDNA==")
-	req.Header.Set("Cookie", "atlassian.xsrf.token=3c877ed29c9e7b0db4a9d2df1bd2404e7cad0cd7_lin")
 
 	expressionResult := new(issueExpressionResult)
 	resp, err := client.Do(req, expressionResult)
@@ -691,10 +685,6 @@ func calculateMaxResults(ctx context.Context, client *jira.Client, d *plugin.Que
 	if err != nil {
 		return 0, err
 	}
-
-	// set headers
-	req.Header.Set("Authorization", "a2V2aW4ueWFrYXJAdGhvdWdodHNwb3QuY29tOkFUQVRUM3hGZkdGMHZObUl6WkRxdHk5VzVlb0tEQTRXZ3BOS3ZvY3JiU0VZUDZzNWJHVXpxem1ReTl4VjZTZktVRjdNTUZQWUdEZDNIX0M5ckRDTllSTmtWRV9fWXR1RG5GdUxOTkt0dTg5QzNGRXU0X0NqTVQ1WU1KeXJ2d2lsdDAyMWREcG1ZbFpTUHFEMGhWaFNoZG05M05ENzZvSktmcEIxUHFlNG12bmdDX0dYM0dReElidz1BODRFMUVDNA==")
-	req.Header.Set("Cookie", "atlassian.xsrf.token=3c877ed29c9e7b0db4a9d2df1bd2404e7cad0cd7_lin")
 
 	expressionResult := new(issueExpressionResult)
 	resp, err := client.Do(req, expressionResult)
