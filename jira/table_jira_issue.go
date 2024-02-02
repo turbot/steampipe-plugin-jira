@@ -320,10 +320,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		} else {
 			searchResult, res, err = searchWithContext(ctx, d, jql, &options)
 		}
-		// return error if user requests too much data
-		if searchResult.Total > issueLimit {
-			return nil, errors.New(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
-		}
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "search_error", err)
 			return nil, err
@@ -343,6 +339,11 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			}
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "api_error", err)
 			return nil, err
+		}
+
+		// return error if user requests too much data
+		if searchResult.Total > issueLimit {
+			return nil, errors.New(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
 		}
 
 		sensitivity, err := getCaseSensitivity(ctx, d)

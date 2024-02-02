@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -139,6 +140,11 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 			}
 			plugin.Logger(ctx).Error("jira_sprint.listSprints", "api_error", err)
 			return nil, err
+		}
+
+		// return error if user requests too much data
+		if listResult.Total > sprintLimit {
+			return nil, errors.New(fmt.Sprintf("Number of results exceeds sprint limit(%d>%d). Please make your query more specific.", listResult.Total, sprintLimit))
 		}
 
 		sensitivity, err := getCaseSensitivity(ctx, d)
