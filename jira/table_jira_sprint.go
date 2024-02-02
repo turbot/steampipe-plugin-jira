@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -141,6 +142,11 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 			return nil, err
 		}
 
+		// return error if user requests too much data
+		if listResult.Total > sprintLimit {
+			return nil, errors.New(fmt.Sprintf("Number of results exceeds sprint limit(%d>%d). Please make your query more specific.", listResult.Total, sprintLimit))
+		}
+
 		sensitivity, err := getCaseSensitivity(ctx, d)
 		if err != nil {
 			return nil, err
@@ -166,7 +172,10 @@ func listSprints(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
-		if listResult.IsLast || sprintCount >= sprintLimit {
+		if listResult.IsLast {
+			return nil, nil
+		} else if sprintCount >= sprintLimit {
+			plugin.Logger(ctx).Debug("Maximum number of sprints reached", sprintLimit)
 			return nil, nil
 		}
 	}

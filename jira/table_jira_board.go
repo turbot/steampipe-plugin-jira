@@ -2,6 +2,8 @@ package jira
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -116,6 +118,11 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 		total := res.Total
 
+		// return error if user requests too much data
+		if total > boardLimit {
+			return nil, errors.New(fmt.Sprintf("Number of results exceeds board limit(%d>%d). Please make your query more specific.", total, boardLimit))
+		}
+
 		sensitivity, err := getCaseSensitivity(ctx, d)
 		if err != nil {
 			return nil, err
@@ -141,7 +148,10 @@ func listBoards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		last = res.StartAt + len(boardList.Values)
-		if last >= total || boardCount >= boardLimit {
+		if last >= total {
+			return nil, nil
+		} else if boardCount >= boardLimit {
+			plugin.Logger(ctx).Debug("Maximum number of boards reached", boardLimit)
 			return nil, nil
 		}
 	}

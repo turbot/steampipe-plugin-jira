@@ -3,15 +3,18 @@ package jira
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 
+	"github.com/trivago/tgo/tcontainer"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
@@ -245,8 +248,23 @@ func tableIssue(_ context.Context) *plugin.Table {
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 
+	useExpression := true
+	columnRequiresJQL := map[string]struct{}{}
+	columnRequiresJQL["sprint_ids"] = struct{}{}
+	columnRequiresJQL["sprint_names"] = struct{}{}
+	columnRequiresJQL["epic_key"] = struct{}{}
+	columnRequiresJQL["tags"] = struct{}{}
+	for _, column := range d.QueryContext.Columns {
+		if _, ok := columnRequiresJQL[column]; ok {
+			useExpression = false
+			break
+		}
+	}
+	plugin.Logger(ctx).Debug("jira_issue.listIssues", "useExpression", useExpression)
+
 	last := 0
 	issueCount := 1
+	numLoops := 5
 	issueLimit, err := getIssueLimit(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "issue_limit", err)
@@ -276,15 +294,42 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
+	// set options.MaxResults to the smaller of user-defined limit and calculated
+	// maxResults value
+	if useExpression {
+		if maxResults, err := calculateMaxResults(ctx, d, jql); err != nil {
+			return nil, err
+		} else if queryLimit != nil && int(*queryLimit) < maxResults {
+			options.MaxResults = int(*queryLimit)
+		} else {
+			options.MaxResults = maxResults
+		}
+	}
 
 	for {
-		searchResult, res, err := searchWithContext(ctx, d, jql, &options)
+		var searchResult *searchResult
+		var res *jira.Response
+		var err error
+		if useExpression {
+			searchResult, res, err = searchWithExpression(ctx, d, jql, &options)
+			if searchResult.MaxResults < options.MaxResults {
+				plugin.Logger(ctx).Debug("jira_issue.listIssues", "maxResults < options.MaxResults; lowering", searchResult.MaxResults)
+				options.MaxResults = searchResult.MaxResults
+			}
+			issueLimit = searchResult.MaxResults * numLoops
+		} else {
+			searchResult, res, err = searchWithContext(ctx, d, jql, &options)
+		}
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "search_error", err)
 			return nil, err
 		}
+
 		issues := searchResult.Issues
-		names := searchResult.Names
+		var names map[string]string
+		if !useExpression {
+			names = searchResult.Names
+		}
 		body, _ := io.ReadAll(res.Body)
 		plugin.Logger(ctx).Debug("jira_issue.listIssues", "res_body", string(body))
 
@@ -294,6 +339,11 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			}
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "api_error", err)
 			return nil, err
+		}
+
+		// return error if user requests too much data
+		if searchResult.Total > issueLimit {
+			return nil, errors.New(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
 		}
 
 		sensitivity, err := getCaseSensitivity(ctx, d)
@@ -312,9 +362,12 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 			// plugin.Logger(ctx).Debug("Issue output:", issue)
 			// plugin.Logger(ctx).Debug("Issue names output:", names)
-			keys := map[string]string{
-				"epic":   getFieldKey(ctx, d, names, "Epic Link"),
-				"sprint": getFieldKey(ctx, d, names, "Sprint"),
+			var keys map[string]string
+			if !useExpression {
+				keys = map[string]string{
+					"epic":   getFieldKey(ctx, d, names, "Epic Link"),
+					"sprint": getFieldKey(ctx, d, names, "Sprint"),
+				}
 			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
@@ -325,7 +378,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		last = searchResult.StartAt + len(issues)
-		if last >= searchResult.Total || issueCount >= issueLimit {
+		if last >= searchResult.Total {
+			return nil, nil
+		} else if issueCount >= issueLimit {
+			plugin.Logger(ctx).Debug("Maximum number of issues reached", issueLimit)
 			return nil, nil
 		} else {
 			options.StartAt = last
@@ -498,6 +554,202 @@ func lowerIfCaseInsensitive(ctx context.Context, d *transform.TransformData) (in
 	return d.Value, errors.New("Could not transform field value to lowercase.")
 }
 
+func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, options *jira.SearchOptions) (*searchResult, *jira.Response, error) {
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithExpression", "connection_error", err)
+		return nil, nil, err
+	}
+
+	jiraConfig := GetConfig(d.Connection)
+
+	u := url.URL{
+		Path: "rest/api/3/expression/eval",
+	}
+	uv := url.Values{}
+	uv.Add("expand", "meta.complexity")
+	u.RawQuery = uv.Encode()
+
+	if jql == "" {
+		jql = "order by created DESC"
+	}
+	requestBody := map[string]interface{}{
+		"context": map[string]interface{}{
+			"issues": map[string]interface{}{
+				"jql": map[string]interface{}{
+					"query":      jql,
+					"maxResults": options.MaxResults,
+					"startAt":    options.StartAt,
+				},
+			},
+		},
+		"expression": "issues.map(issue => {" + getKeyString(ctx, d.QueryContext.Columns) + "})",
+	}
+
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "req_body", requestBody)
+	req, err := client.NewRequestWithContext(ctx, "POST", u.String(), requestBody)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	expressionResult := new(issueExpressionResult)
+	resp, err := client.Do(req, expressionResult)
+	body, _ := io.ReadAll(resp.Body)
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "res_body", string(body))
+	if err != nil {
+		return nil, nil, jira.NewJiraError(resp, err)
+	}
+
+	// convert expressionResults to jira issues
+	var jiraIssues []jira.Issue
+	for _, value := range expressionResult.Values {
+		n := new(jira.Issue)
+		f := new(jira.IssueFields)
+
+		var components []*jira.Component
+		for _, cID := range value.Components {
+			components = append(components, &jira.Component{ID: cID})
+		}
+		f.Components = components
+
+		timeLayout := "2006-01-02T15:04:05.999-0700"
+		created, _ := time.Parse(timeLayout, value.Created)
+		f.Created = jira.Time(created)
+
+		resolution, _ := time.Parse(timeLayout, value.ResolutionDate)
+		f.Resolutiondate = jira.Time(resolution)
+
+		updated, _ := time.Parse(timeLayout, value.Updated)
+		f.Updated = jira.Time(updated)
+
+		duedate, _ := time.Parse(timeLayout, value.Duedate)
+		f.Duedate = jira.Date(duedate)
+
+		f.Assignee = &jira.User{DisplayName: value.AssigneeName, AccountID: value.AssigneeID}
+		f.Creator = &jira.User{DisplayName: value.CreatorName, AccountID: value.CreatorID}
+		f.Description = value.Description
+		f.Labels = value.Labels
+		f.Priority = &jira.Priority{Name: value.Priority}
+		f.Project = jira.Project{ID: value.ProjectID, Key: value.ProjectKey, Name: value.ProjectName}
+		f.Reporter = &jira.User{DisplayName: value.ReporterName, AccountID: value.ReporterID}
+		f.Status = &jira.Status{Name: value.StatusName, StatusCategory: jira.StatusCategory{Name: value.StatusCategory}}
+		f.Summary = value.Summary
+		f.Type = jira.IssueType{Name: value.Type}
+		f.Unknowns = make(tcontainer.MarshalMap)
+
+		n.ID = value.ID
+		n.Key = value.Key
+		n.Self = strings.TrimSuffix(*jiraConfig.BaseUrl, "/") + "/rest/api/2/issue/" + n.ID
+		n.Fields = f
+		jiraIssues = append(jiraIssues, *n)
+	}
+
+	v := new(searchResult)
+	v.StartAt = expressionResult.Meta.Issues.Jql.StartAt
+	v.MaxResults = expressionResult.Meta.Issues.Jql.MaxResults
+	v.Total = expressionResult.Meta.Issues.Jql.TotalCount
+	v.Issues = jiraIssues
+
+	return v, resp, err
+}
+
+// generate expression key string from columns in d.QueryContext.Columns
+func getKeyString(ctx context.Context, columns []string) string {
+	columnMapping := map[string]string{
+		"id":                    "id: JSON.stringify(issue.id)",
+		"key":                   "key: issue.key",
+		"project_name":          "projectName: issue.project.name",
+		"project_id":            "projectId: JSON.stringify(issue.project.id)",
+		"project_key":           "projectKey: issue.project.key",
+		"status":                "statusName: issue.status.name",
+		"status_category":       "statusCategory: issue.status.category.name",
+		"assignee_account_id":   "assigneeId: JSON.stringify(issue.assignee?.accountId)",
+		"assignee_display_name": "assigneeName: issue.assignee?.displayName",
+		"creator_account_id":    "creatorId: JSON.stringify(issue.creator?.accountId)",
+		"creator_display_name":  "creatorName: issue.creator?.displayName",
+		"created":               "created: issue.created",
+		"duedate":               "dueDate: issue.dueDate",
+		"description":           "description: issue.description?.plainText",
+		"type":                  "issueType: issue.issueType.name",
+		"labels":                "labels: issue.labels",
+		"priority":              "priority: issue.priority.name",
+		"reporter_display_name": "reporterName: issue.reporter?.displayName",
+		"reporter_account_id":   "reporterId: JSON.stringify(issue.reporter?.accountId)",
+		"resolution_date":       "resolutionDate: issue.resolutionDate",
+		"summary":               "summary: issue.summary",
+		"updated":               "updated: issue.updated",
+		"components":            "components: issue.components.map(c => JSON.stringify(c.id)) ",
+	}
+	keys := []string{}
+	for _, column := range columns {
+		if key, ok := columnMapping[column]; ok {
+			keys = append(keys, key)
+		} else {
+			plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.getKeyString", "column not found in mapping", column)
+		}
+	}
+	return strings.Join(keys, ",")
+}
+
+func calculateMaxResults(ctx context.Context, d *plugin.QueryData, jql string) (int, error) {
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithExpression", "connection_error", err)
+		return 0, err
+	}
+
+	u := url.URL{
+		Path: "rest/api/3/expression/eval",
+	}
+	uv := url.Values{}
+	uv.Add("expand", "meta.complexity")
+	u.RawQuery = uv.Encode()
+	url := u.String()
+
+	if jql == "" {
+		jql = "order by created DESC"
+	}
+	resultAmount := 2
+	requestBody := map[string]interface{}{
+		"context": map[string]interface{}{
+			"issues": map[string]interface{}{
+				"jql": map[string]interface{}{
+					"query":      jql,
+					"maxResults": resultAmount,
+				},
+			},
+		},
+		"expression": "issues.map(issue => {" + getKeyString(ctx, d.QueryContext.Columns) + "})",
+	}
+
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.calculateMaxResults", "req_body", requestBody)
+	req, err := client.NewRequestWithContext(ctx, "POST", url, requestBody)
+	if err != nil {
+		return 0, err
+	}
+
+	expressionResult := new(issueExpressionResult)
+	resp, err := client.Do(req, expressionResult)
+	body, _ := io.ReadAll(resp.Body)
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.calculateMaxResults", "res_body", string(body))
+	if err != nil {
+		return 0, jira.NewJiraError(resp, err)
+	}
+
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.calculateMaxResults", "complexity", expressionResult.Meta.Complexity)
+	primitiveValuePortion := float64(expressionResult.Meta.Complexity.PrimitiveValues.Value) / float64(resultAmount)
+	primitiveValueMax := float64(expressionResult.Meta.Complexity.PrimitiveValues.Limit)/primitiveValuePortion - primitiveValuePortion
+
+	stepPortion := float64(expressionResult.Meta.Complexity.Steps.Value) / float64(resultAmount)
+	stepMax := float64(expressionResult.Meta.Complexity.Steps.Limit)/stepPortion - stepPortion
+
+	if primitiveValueMax < stepMax {
+		return int(primitiveValueMax), nil
+	} else {
+		return int(stepMax), nil
+	}
+}
+
 func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, options *jira.SearchOptions) (*searchResult, *jira.Response, error) {
 	u := url.URL{
 		Path: "rest/api/2/search",
@@ -528,7 +780,6 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 		"issuetype",
 		"labels",
 		"priority",
-		"project",
 		"reporter",
 		"resolutiondate",
 		"summary",
@@ -584,4 +835,63 @@ type searchResult struct {
 	MaxResults int               `json:"maxResults" structs:"maxResults"`
 	Total      int               `json:"total" structs:"total"`
 	Names      map[string]string `json:"names,omitempty" structs:"names,omitempty"`
+}
+
+type issueExpressionValue struct {
+	ID             string   `json:"id,omitempty" structs:"id,omitempty"`
+	Key            string   `json:"key,omitempty" structs:"key,omitempty"`
+	Self           string   `json:"self,omitempty" structs:"self,omitempty"`
+	Summary        string   `json:"summary,omitempty" structs:"summary,omitempty"`
+	Type           string   `json:"issueType,omitempty" structs:"issueType,omitempty"`
+	CreatorID      string   `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
+	CreatorName    string   `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
+	Components     []string `json:"components,omitempty" structs:"components,omitempty"`
+	Created        string   `json:"created,omitempty" structs:"created,omitempty"`
+	ProjectName    string   `json:"projectName,omitempty" structs:"projectName,omitempty"`
+	ProjectID      string   `json:"projectId,omitempty" structs:"projectId,omitempty"`
+	ProjectKey     string   `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
+	Description    string   `json:"description,omitempty" structs:"description,omitempty"`
+	ReporterName   string   `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
+	ReporterID     string   `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
+	Priority       string   `json:"priority,omitempty" structs:"priority,omitempty"`
+	Labels         []string `json:"labels,omitempty" structs:"labels,omitempty"`
+	Duedate        string   `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
+	ResolutionDate string   `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
+	AssigneeID     string   `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
+	AssigneeName   string   `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
+	Updated        string   `json:"updated,omitempty" structs:"updated,omitempty"`
+	StatusName     string   `json:"statusName,omitempty" structs:"statusName,omitempty"`
+	StatusCategory string   `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
+}
+
+type issueExpressionResult struct {
+	Values []issueExpressionValue `json:"value" structs:"value"`
+	Meta   struct {
+		Complexity struct {
+			Steps struct {
+				Value int `json:"value" structs:"value"`
+				Limit int `json:"limit" structs:"limit"`
+			} `json:"steps" structs:"steps"`
+			ExpensiveOperations struct {
+				Value int `json:"value" structs:"value"`
+				Limit int `json:"limit" structs:"limit"`
+			} `json:"expensiveOperations" structs:"expensiveOperations"`
+			Beans struct {
+				Value int `json:"value" structs:"value"`
+				Limit int `json:"limit" structs:"limit"`
+			} `json:"beans" structs:"beans"`
+			PrimitiveValues struct {
+				Value int `json:"value" structs:"value"`
+				Limit int `json:"limit" structs:"limit"`
+			} `json:"primitiveValues" structs:"primitiveValues"`
+		} `json:"complexity" structs:"complexity"`
+		Issues struct {
+			Jql struct {
+				StartAt    int `json:"startAt" structs:"startAt"`
+				MaxResults int `json:"maxResults" structs:"maxResults"`
+				Count      int `json:"count" structs:"count"`
+				TotalCount int `json:"totalCount" structs:"totalCount"`
+			} `json:"jql" structs:"jql"`
+		} `json:"issues" structs:"issues"`
+	} `json:"meta" structs:"meta"`
 }

@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -191,6 +192,11 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 			return nil, err
 		}
 
+		// return error if user requests too much data
+		if projectList.Total > projectLimit {
+			return nil, errors.New(fmt.Sprintf("Number of results exceeds project limit(%d>%d). Please make your query more specific.", projectList.Total, projectLimit))
+		}
+
 		for _, project := range projectList.Values {
 			if projectCount > projectLimit {
 				plugin.Logger(ctx).Debug("Maximum number of projects reached", projectLimit)
@@ -204,7 +210,10 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 			projectCount += 1
 		}
 		last = projectList.StartAt + len(projectList.Values)
-		if projectList.IsLast || projectCount >= projectLimit {
+		if projectList.IsLast {
+			return nil, nil
+		} else if projectCount >= projectLimit {
+			plugin.Logger(ctx).Debug("Maximum number of projects reached", projectLimit)
 			return nil, nil
 		}
 	}

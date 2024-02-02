@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -179,6 +180,11 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 			return nil, err
 		}
 
+		// return error if user requests too much data
+		if listResult.Total > componentLimit {
+			return nil, errors.New(fmt.Sprintf("Number of results exceeds component limit(%d>%d). Please make your query more specific.", listResult.Total, componentLimit))
+		}
+
 		sensitivity, err := getCaseSensitivity(ctx, d)
 		if err != nil {
 			return nil, err
@@ -215,7 +221,10 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 		}
 
 		last = listResult.StartAt + len(listResult.Values)
-		if listResult.IsLast || componentCount >= componentLimit {
+		if listResult.IsLast {
+			return nil, nil
+		} else if componentCount >= componentLimit {
+			plugin.Logger(ctx).Debug("Maximum number of components reached", componentLimit)
 			return nil, nil
 		}
 	}
