@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -293,6 +294,17 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
+	// set options.MaxResults to the smaller of user-defined limit and calculated
+	// maxResults value
+	if useExpression {
+		if maxResults, err := calculateMaxResults(ctx, d, jql); err != nil {
+			return nil, err
+		} else if queryLimit != nil && int(*queryLimit) < maxResults {
+			options.MaxResults = int(*queryLimit)
+		} else {
+			options.MaxResults = maxResults
+		}
+	}
 
 	for {
 		var searchResult *searchResult
@@ -300,9 +312,17 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		var err error
 		if useExpression {
 			searchResult, res, err = searchWithExpression(ctx, d, jql, &options)
+			if searchResult.MaxResults < options.MaxResults {
+				plugin.Logger(ctx).Debug("jira_issue.listIssues", "maxResults < options.MaxResults; lowering", searchResult.MaxResults)
+				options.MaxResults = searchResult.MaxResults
+			}
 			issueLimit = searchResult.MaxResults * numLoops
 		} else {
 			searchResult, res, err = searchWithContext(ctx, d, jql, &options)
+		}
+		// return error if user requests too much data
+		if searchResult.Total > issueLimit {
+			return nil, errors.New(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
 		}
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "search_error", err)
@@ -552,13 +572,12 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 	if jql == "" {
 		jql = "order by created DESC"
 	}
-	maxResults, err := calculateMaxResults(ctx, client, d, u.String(), jql)
 	requestBody := map[string]interface{}{
 		"context": map[string]interface{}{
 			"issues": map[string]interface{}{
 				"jql": map[string]interface{}{
 					"query":      jql,
-					"maxResults": maxResults,
+					"maxResults": options.MaxResults,
 					"startAt":    options.StartAt,
 				},
 			},
@@ -671,7 +690,24 @@ func getKeyString(ctx context.Context, columns []string) string {
 	return strings.Join(keys, ",")
 }
 
-func calculateMaxResults(ctx context.Context, client *jira.Client, d *plugin.QueryData, url string, jql string) (int, error) {
+func calculateMaxResults(ctx context.Context, d *plugin.QueryData, jql string) (int, error) {
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithExpression", "connection_error", err)
+		return 0, err
+	}
+
+	u := url.URL{
+		Path: "rest/api/3/expression/eval",
+	}
+	uv := url.Values{}
+	uv.Add("expand", "meta.complexity")
+	u.RawQuery = uv.Encode()
+	url := u.String()
+
+	if jql == "" {
+		jql = "order by created DESC"
+	}
 	resultAmount := 2
 	requestBody := map[string]interface{}{
 		"context": map[string]interface{}{
@@ -694,21 +730,22 @@ func calculateMaxResults(ctx context.Context, client *jira.Client, d *plugin.Que
 	expressionResult := new(issueExpressionResult)
 	resp, err := client.Do(req, expressionResult)
 	body, _ := io.ReadAll(resp.Body)
-	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "res_body", string(body))
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.calculateMaxResults", "res_body", string(body))
 	if err != nil {
 		return 0, jira.NewJiraError(resp, err)
 	}
 
-	primitiveValuePortion := expressionResult.Meta.Complexity.PrimitiveValues.Value / resultAmount
-	primitiveValueMax := expressionResult.Meta.Complexity.PrimitiveValues.Limit/primitiveValuePortion - primitiveValuePortion
+	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.calculateMaxResults", "complexity", expressionResult.Meta.Complexity)
+	primitiveValuePortion := float64(expressionResult.Meta.Complexity.PrimitiveValues.Value) / float64(resultAmount)
+	primitiveValueMax := float64(expressionResult.Meta.Complexity.PrimitiveValues.Limit)/primitiveValuePortion - primitiveValuePortion
 
-	stepPortion := expressionResult.Meta.Complexity.Steps.Value / resultAmount
-	stepMax := expressionResult.Meta.Complexity.Steps.Limit/stepPortion - stepPortion
+	stepPortion := float64(expressionResult.Meta.Complexity.Steps.Value) / float64(resultAmount)
+	stepMax := float64(expressionResult.Meta.Complexity.Steps.Limit)/stepPortion - stepPortion
 
 	if primitiveValueMax < stepMax {
-		return primitiveValueMax, nil
+		return int(primitiveValueMax), nil
 	} else {
-		return stepMax, nil
+		return int(stepMax), nil
 	}
 }
 
