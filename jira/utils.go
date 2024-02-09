@@ -92,7 +92,7 @@ const (
 //// TRANSFORM FUNCTION
 
 // convertJiraTime:: converts jira.Time to time.Time
-func convertJiraTime(_ context.Context, d *transform.TransformData) (interface{}, error) {
+func convertJiraTime(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	if d.Value == nil {
 		return nil, nil
 	}
@@ -112,11 +112,12 @@ func convertJiraDate(_ context.Context, d *transform.TransformData) (interface{}
 	return time.Time(d.Value.(jira.Date)), nil
 }
 
-func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*plugin.Column) string {
+func buildJQLQueryFromQuals(ctx context.Context, equalQuals plugin.KeyColumnQualMap, tableColumns []*plugin.Column) string {
 	filters := []string{}
-
+	plugin.Logger(ctx).Debug("jira_issue::buildJQLQueryFromQuals", equalQuals)
 	for _, filterQualItem := range tableColumns {
 		filterQual := equalQuals[filterQualItem.Name]
+
 		if filterQual == nil {
 			continue
 		}

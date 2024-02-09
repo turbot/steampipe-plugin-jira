@@ -37,6 +37,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "created", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "creator_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "creator_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "component_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "duedate", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "epic_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "priority", Require: plugin.Optional, Operators: []string{"=", "<>"}},
@@ -216,6 +217,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 
 			// JSON fields
 			{
+				Name:        "component_name",
+				Description: "List of components Name associated with the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.From(getIssueComponents),
+			},
+			{
 				Name:        "components",
 				Description: "List of components associated with the issue.",
 				Type:        proto.ColumnType_JSON,
@@ -291,9 +298,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		MaxResults: limit,
 		Expand:     "names",
 	}
-
-	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
-	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
+	jql := buildJQLQueryFromQuals(ctx, d.Quals, d.Table.Columns)
 	// set options.MaxResults to the smaller of user-defined limit and calculated
 	// maxResults value
 	if useExpression {
@@ -470,7 +475,6 @@ func extractComponentIds(_ context.Context, d *transform.TransformData) (interfa
 	}
 	return componentIds, nil
 }
-
 func extractRequiredField(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	issueInfo := d.HydrateItem.(IssueInfo)
 	m := issueInfo.Fields.Unknowns
@@ -515,6 +519,20 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 		}
 	}
 	return tags, nil
+}
+
+func getIssueComponents(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issue := d.HydrateItem.(IssueInfo)
+
+	var componentNames []string
+	if issue.Fields != nil && issue.Fields.Components != nil {
+		for _, i := range issue.Fields.Components {
+			componentNames = append(componentNames, i.Name)
+		}
+	}
+	result := strings.Join(componentNames, ",")
+	return result, nil
+
 }
 
 //// Utility Function
