@@ -37,7 +37,8 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "created", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "creator_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "creator_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
-				{Name: "component_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "component", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "labels", Require: plugin.Optional, Operators: []string{"=", "<>", "~~"}},
 				{Name: "duedate", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "epic_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "priority", Require: plugin.Optional, Operators: []string{"=", "<>"}},
@@ -166,12 +167,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Type.Name").Transform(lowerIfCaseInsensitive),
 			},
-			{
+			/*{
 				Name:        "labels",
 				Description: "A list of labels applied to the issue.",
 				Type:        proto.ColumnType_JSON,
 				Transform:   transform.FromField("Fields.Labels"),
-			},
+			},*/
 			{
 				Name:        "priority",
 				Description: "Priority assigned to the issue.",
@@ -217,15 +218,23 @@ func tableIssue(_ context.Context) *plugin.Table {
 
 			// JSON fields
 			{
-				Name:        "component_name",
+				Name:        "labels",
+				Description: "A list of labels applied to the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.From(getIssueLabels).Transform(lowerIfCaseInsensitive),
+				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "component",
 				Description: "List of components Name associated with the issue.",
 				Type:        proto.ColumnType_STRING,
-				Transform:   transform.From(getIssueComponents),
+				Transform:   transform.FromField("Fields.Components").Transform(extractComponentNames).Transform(lowerIfCaseInsensitive),
+				//Transform:   transform.From("Fields.Components").Transform(extractComponentNames).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "components",
 				Description: "List of components associated with the issue.",
-				Type:        proto.ColumnType_JSON,
+				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Components").Transform(extractComponentIds),
 			},
 			{
@@ -261,6 +270,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	columnRequiresJQL["sprint_names"] = struct{}{}
 	columnRequiresJQL["epic_key"] = struct{}{}
 	columnRequiresJQL["tags"] = struct{}{}
+	columnRequiresJQL["components"] = struct{}{}
 	for _, column := range d.QueryContext.Columns {
 		if _, ok := columnRequiresJQL[column]; ok {
 			useExpression = false
@@ -468,13 +478,23 @@ func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 
 //// TRANSFORM FUNCTION
 
-func extractComponentIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
+func extractComponentIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	var componentIds []string
 	for _, item := range d.Value.([]*jira.Component) {
+		//plugin.Logger(ctx).Debug("extractComponentIds", item)
 		componentIds = append(componentIds, item.ID)
 	}
 	return componentIds, nil
 }
+
+func extractComponentNames(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	var componentNames []string
+	for _, item := range d.Value.([]*jira.Component) {
+		componentNames = append(componentNames, item.Name)
+	}
+	return strings.Join(componentNames, ","), nil
+}
+
 func extractRequiredField(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	issueInfo := d.HydrateItem.(IssueInfo)
 	m := issueInfo.Fields.Unknowns
@@ -521,12 +541,18 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 	return tags, nil
 }
 
+func getIssueLabels(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	issue := d.HydrateItem.(IssueInfo)
+	return strings.Join(issue.Fields.Labels, ","), nil
+}
+
 func getIssueComponents(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	issue := d.HydrateItem.(IssueInfo)
 
 	var componentNames []string
 	if issue.Fields != nil && issue.Fields.Components != nil {
 		for _, i := range issue.Fields.Components {
+			plugin.Logger(ctx).Debug("getIssueComponents", i)
 			componentNames = append(componentNames, i.Name)
 		}
 	}
@@ -559,6 +585,7 @@ func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]stri
 // attempts to convert the value to lowercase if it is not nil, otherwise returns nil
 func lowerIfCaseInsensitive(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	issue := d.HydrateItem.(IssueInfo)
+
 	sensitivity := issue.Fields.Unknowns["sensitivity"]
 	if sensitivity == "sensitive" {
 		return d.Value, nil
@@ -624,10 +651,10 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 	for _, value := range expressionResult.Values {
 		n := new(jira.Issue)
 		f := new(jira.IssueFields)
-
+		plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "value.Components", value.Components)
 		var components []*jira.Component
-		for _, cID := range value.Components {
-			components = append(components, &jira.Component{ID: cID})
+		for _, component := range value.Components {
+			components = append(components, &jira.Component{ID: component["id"], Name: component["name"]})
 		}
 		f.Components = components
 
@@ -697,7 +724,8 @@ func getKeyString(ctx context.Context, columns []string) string {
 		"resolution_date":       "resolutionDate: issue.resolutionDate",
 		"summary":               "summary: issue.summary",
 		"updated":               "updated: issue.updated",
-		"components":            "components: issue.components.map(c => JSON.stringify(c.id)) ",
+		"component":             "components: issue.components.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
+		//"components": "components: issue.components?.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 	}
 	keys := []string{}
 	for _, column := range columns {
@@ -857,30 +885,30 @@ type searchResult struct {
 }
 
 type issueExpressionValue struct {
-	ID             string   `json:"id,omitempty" structs:"id,omitempty"`
-	Key            string   `json:"key,omitempty" structs:"key,omitempty"`
-	Self           string   `json:"self,omitempty" structs:"self,omitempty"`
-	Summary        string   `json:"summary,omitempty" structs:"summary,omitempty"`
-	Type           string   `json:"issueType,omitempty" structs:"issueType,omitempty"`
-	CreatorID      string   `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
-	CreatorName    string   `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
-	Components     []string `json:"components,omitempty" structs:"components,omitempty"`
-	Created        string   `json:"created,omitempty" structs:"created,omitempty"`
-	ProjectName    string   `json:"projectName,omitempty" structs:"projectName,omitempty"`
-	ProjectID      string   `json:"projectId,omitempty" structs:"projectId,omitempty"`
-	ProjectKey     string   `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
-	Description    string   `json:"description,omitempty" structs:"description,omitempty"`
-	ReporterName   string   `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
-	ReporterID     string   `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
-	Priority       string   `json:"priority,omitempty" structs:"priority,omitempty"`
-	Labels         []string `json:"labels,omitempty" structs:"labels,omitempty"`
-	Duedate        string   `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
-	ResolutionDate string   `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
-	AssigneeID     string   `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
-	AssigneeName   string   `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
-	Updated        string   `json:"updated,omitempty" structs:"updated,omitempty"`
-	StatusName     string   `json:"statusName,omitempty" structs:"statusName,omitempty"`
-	StatusCategory string   `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
+	ID             string              `json:"id,omitempty" structs:"id,omitempty"`
+	Key            string              `json:"key,omitempty" structs:"key,omitempty"`
+	Self           string              `json:"self,omitempty" structs:"self,omitempty"`
+	Summary        string              `json:"summary,omitempty" structs:"summary,omitempty"`
+	Type           string              `json:"issueType,omitempty" structs:"issueType,omitempty"`
+	CreatorID      string              `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
+	CreatorName    string              `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
+	Components     []map[string]string `json:"components,omitempty" structs:"components,omitempty"`
+	Created        string              `json:"created,omitempty" structs:"created,omitempty"`
+	ProjectName    string              `json:"projectName,omitempty" structs:"projectName,omitempty"`
+	ProjectID      string              `json:"projectId,omitempty" structs:"projectId,omitempty"`
+	ProjectKey     string              `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
+	Description    string              `json:"description,omitempty" structs:"description,omitempty"`
+	ReporterName   string              `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
+	ReporterID     string              `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
+	Priority       string              `json:"priority,omitempty" structs:"priority,omitempty"`
+	Labels         []string            `json:"labels,omitempty" structs:"labels,omitempty"`
+	Duedate        string              `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
+	ResolutionDate string              `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
+	AssigneeID     string              `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
+	AssigneeName   string              `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
+	Updated        string              `json:"updated,omitempty" structs:"updated,omitempty"`
+	StatusName     string              `json:"statusName,omitempty" structs:"statusName,omitempty"`
+	StatusCategory string              `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
 }
 
 type issueExpressionResult struct {
