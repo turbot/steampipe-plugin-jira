@@ -41,6 +41,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "labels", Require: plugin.Optional, Operators: []string{"=", "<>", "~~"}},
 				{Name: "duedate", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "epic_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "parent_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "priority", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "project_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "project_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
@@ -104,6 +105,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromP(extractRequiredField, "epic").Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "parent_key",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Parent.Key").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "sprint_ids",
@@ -651,12 +658,12 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 	for _, value := range expressionResult.Values {
 		n := new(jira.Issue)
 		f := new(jira.IssueFields)
-		plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "value.Components", value.Components)
 		var components []*jira.Component
 		for _, component := range value.Components {
 			components = append(components, &jira.Component{ID: component["id"], Name: component["name"]})
 		}
 		f.Components = components
+		f.Parent = &jira.Parent{Key: value.ParentKey}
 
 		timeLayout := "2006-01-02T15:04:05.999-0700"
 		created, _ := time.Parse(timeLayout, value.Created)
@@ -724,6 +731,7 @@ func getKeyString(ctx context.Context, columns []string) string {
 		"resolution_date":       "resolutionDate: issue.resolutionDate",
 		"summary":               "summary: issue.summary",
 		"updated":               "updated: issue.updated",
+		"parent_key":            "parentKey: issue.parent?.key",
 		"component":             "components: issue.components.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 		//"components": "components: issue.components?.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 	}
@@ -909,6 +917,7 @@ type issueExpressionValue struct {
 	Updated        string              `json:"updated,omitempty" structs:"updated,omitempty"`
 	StatusName     string              `json:"statusName,omitempty" structs:"statusName,omitempty"`
 	StatusCategory string              `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
+	ParentKey      string              `json:"parentKey,omitempty" structs:"parentKey,omitempty"`
 }
 
 type issueExpressionResult struct {
