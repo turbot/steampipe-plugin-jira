@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -51,6 +52,9 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "resolution_date", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "status_category", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "releasecommit", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "etv", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "vteam", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "updated", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 			},
@@ -232,6 +236,27 @@ func tableIssue(_ context.Context) *plugin.Table {
 				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
 			},
 			{
+				Name:        "etv",
+				Description: "A list of labels applied to the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractArrayCustomField, "etv").Transform(lowerIfCaseInsensitive),
+				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "releasecommit",
+				Description: "A list of labels applied to the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractValueCustomField, "releasecommit").Transform(lowerIfCaseInsensitive),
+				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "vteam",
+				Description: "A list of labels applied to the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractValueCustomField, "vteam").Transform(lowerIfCaseInsensitive),
+				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
+			},
+			{
 				Name:        "component",
 				Description: "List of components Name associated with the issue.",
 				Type:        proto.ColumnType_STRING,
@@ -364,6 +389,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		// return error if user requests too much data
+		plugin.Logger(ctx).Debug(fmt.Sprintf("Number of results=%d , Our limit=%d.", searchResult.Total, issueLimit))
 		if searchResult.Total > issueLimit {
 			//return nil, errors.New(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
 			plugin.Logger(ctx).Debug(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
@@ -483,7 +509,61 @@ func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 	}
 }
 
-//// TRANSFORM FUNCTION
+// // TRANSFORM FUNCTION
+
+func extractArrayCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	m := issueInfo.Fields.Unknowns
+	param := d.Param.(string)
+	j := m[param].(string)
+	var cMap []map[string]interface{}
+	var l []string
+	json.Unmarshal([]byte(j), &cMap)
+	for _, item := range cMap {
+		l = append(l, item["name"].(string))
+	}
+	return strings.Join(l, ","), nil
+}
+
+func extractValueCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	m := issueInfo.Fields.Unknowns
+	param := d.Param.(string)
+	j := m[param].(string)
+	var cMap map[string]interface{}
+	json.Unmarshal([]byte(j), &cMap)
+	return cMap["value"], nil
+}
+
+func extractETV(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	unknown := d.Value.(tcontainer.MarshalMap)
+	etv_value := unknown["etv"].(string)
+	var etvMap []map[string]interface{}
+	var etvList []string
+	json.Unmarshal([]byte(etv_value), &etvMap)
+	for _, item := range etvMap {
+		etvList = append(etvList, item["name"].(string))
+	}
+	return strings.Join(etvList, ","), nil
+}
+
+func extractReleaseCommit(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	unknown := d.Value.(tcontainer.MarshalMap)
+	jsonString := unknown["releasecommit"].(string)
+	var releaseCommitMap map[string]interface{}
+
+	json.Unmarshal([]byte(jsonString), &releaseCommitMap)
+	return releaseCommitMap["value"], nil
+}
+
+func extractVteam(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	unknown := d.Value.(tcontainer.MarshalMap)
+	jsonString := unknown["vteam"].(string)
+	var vteamMap map[string]interface{}
+
+	json.Unmarshal([]byte(jsonString), &vteamMap)
+	return vteamMap["value"], nil
+}
 
 func extractComponentIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	var componentIds []string
@@ -689,7 +769,9 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 		f.Summary = value.Summary
 		f.Type = jira.IssueType{Name: value.Type}
 		f.Unknowns = make(tcontainer.MarshalMap)
-
+		f.Unknowns["etv"] = value.ETV
+		f.Unknowns["vteam"] = value.VTeam
+		f.Unknowns["releasecommit"] = value.ReleaseCommit
 		n.ID = value.ID
 		n.Key = value.Key
 		n.Self = strings.TrimSuffix(*jiraConfig.BaseUrl, "/") + "/rest/api/2/issue/" + n.ID
@@ -732,6 +814,9 @@ func getKeyString(ctx context.Context, columns []string) string {
 		"summary":               "summary: issue.summary",
 		"updated":               "updated: issue.updated",
 		"parent_key":            "parentKey: issue.parent?.key",
+		"releasecommit":         "releasecommit: JSON.stringify(issue.customfield_13139)",
+		"etv":                   "etv: JSON.stringify(issue.customfield_13193)",
+		"vteam":                 "vteam: JSON.stringify(issue.customfield_13323)",
 		"component":             "components: issue.components.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 		//"components": "components: issue.components?.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 	}
@@ -918,6 +1003,9 @@ type issueExpressionValue struct {
 	StatusName     string              `json:"statusName,omitempty" structs:"statusName,omitempty"`
 	StatusCategory string              `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
 	ParentKey      string              `json:"parentKey,omitempty" structs:"parentKey,omitempty"`
+	ETV            string              `json:"etv,omitempty" structs:"etv,omitempty"`
+	VTeam          string              `json:"vteam,omitempty" structs:"vteam,omitempty"`
+	ReleaseCommit  string              `json:"releasecommit,omitempty" structs:"releasecommit,omitempty"`
 }
 
 type issueExpressionResult struct {

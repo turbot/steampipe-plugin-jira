@@ -131,13 +131,17 @@ func buildJQLQueryFromQuals(ctx context.Context, equalQuals plugin.KeyColumnQual
 			for _, qual := range filterQual.Quals {
 				if qual.Value != nil {
 					value := qual.Value
+					//plugin.Logger(ctx).Debug("jira_issue::buildJQLQueryFromQuals", value, filterQualItem.Type, qual.Operator)
+
 					switch filterQualItem.Type {
 					case proto.ColumnType_STRING:
 						switch qual.Operator {
 						case "=":
 							filters = append(filters, fmt.Sprintf("\"%s\" = \"%s\"", getIssueJQLKey(filterQualItem.Name), value.GetStringValue()))
 						case "<>":
-							filters = append(filters, fmt.Sprintf("%s != \"%s\"", getIssueJQLKey(filterQualItem.Name), value.GetStringValue()))
+							filters = append(filters, fmt.Sprintf("\"%s\" != \"%s\"", getIssueJQLKey(filterQualItem.Name), value.GetStringValue()))
+							//case "~~":
+							//	filters = append(filters, fmt.Sprintf("%s = \"%s\"", getIssueJQLKey(filterQualItem.Name), value.GetStringValue()))
 						}
 					case proto.ColumnType_TIMESTAMP:
 						switch qual.Operator {
@@ -162,7 +166,17 @@ func buildJQLQueryFromQuals(ctx context.Context, equalQuals plugin.KeyColumnQual
 }
 
 func getIssueJQLKey(columnName string) string {
-	return strings.ToLower(strings.Split(columnName, "_")[0])
+	jqlKeyMap := map[string]string{
+		"releasecommit": "Release Commit",
+		"etv":           "Eng Target Version/s",
+		"vteam":         "V-team/P-team",
+	}
+	// if the column name is in the map, return the value else return the column name
+	if jqlKey, ok := jqlKeyMap[columnName]; ok {
+		return strings.ToLower(jqlKey)
+	} else {
+		return strings.ToLower(strings.Split(columnName, "_")[0])
+	}
 }
 
 func getPageSize(_ context.Context, d *plugin.QueryData) (int, error) {
