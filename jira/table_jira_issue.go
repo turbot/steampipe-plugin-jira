@@ -25,14 +25,13 @@ func tableIssue(ctx context.Context) *plugin.Table {
 	issueTable := &plugin.Table{
 		Name:        "jira_issue",
 		Description: "Issues help manage code, estimate workload, and keep track of team.",
-		Get: &plugin.GetConfig{
-			KeyColumns: plugin.AnyColumn([]string{"id", "key"}),
-			Hydrate:    getIssue,
-		},
+
 		List: &plugin.ListConfig{
 			Hydrate: listIssues,
 			// https://support.atlassian.com/jira-service-management-cloud/docs/advanced-search-reference-jql-fields/
 			KeyColumns: plugin.KeyColumnSlice{
+				{Name: "id", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
+				{Name: "key", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<", "IN"}},
 				{Name: "assignee_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "assignee_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "created", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
