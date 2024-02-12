@@ -53,6 +53,8 @@ func tableIssue(ctx context.Context) *plugin.Table {
 				{Name: "status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "status_category", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "parent_issue_type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "parent_status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "updated", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 			},
 		},
@@ -112,6 +114,24 @@ func tableIssue(ctx context.Context) *plugin.Table {
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Parent.Key").Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "parent_issue_type",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractRequiredField, "parent_issue_type").Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "parent_status",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractRequiredField, "parent_status").Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "parent_status_category",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractRequiredField, "parent_status_category").Transform(lowerIfCaseInsensitive),
 			},
 			{
 				Name:        "sprint_ids",
@@ -539,10 +559,10 @@ func extractArrayCustomField(ctx context.Context, d *transform.TransformData) (i
 			}
 			return strings.Join(l, ","), nil
 		} else {
-			plugin.Logger(ctx).Debug("extractArrayCustomField::custom_fields value does not exist", param)
+			//plugin.Logger(ctx).Debug("extractArrayCustomField::custom_fields value does not exist", param)
 		}
 	} else {
-		plugin.Logger(ctx).Debug("extractArrayCustomField::custom_fields does not exist")
+		//plugin.Logger(ctx).Debug("extractArrayCustomField::custom_fields does not exist")
 	}
 	return nil, nil
 }
@@ -556,11 +576,10 @@ func extractOptionCustomField(ctx context.Context, d *transform.TransformData) (
 			json.Unmarshal([]byte(j), &cMap)
 			return cMap["value"], nil
 		} else {
-			plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields value does not exist", param)
+			//plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields value does not exist", param)
 		}
 	} else {
-		plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields does not exist")
-
+		//plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields does not exist")
 	}
 	return nil, nil
 }
@@ -613,7 +632,10 @@ func extractRequiredField(_ context.Context, d *transform.TransformData) (interf
 	issueInfo := d.HydrateItem.(IssueInfo)
 	m := issueInfo.Fields.Unknowns
 	param := d.Param.(string)
-	return m[issueInfo.Keys[param]], nil
+	if value, ok := m[param]; ok {
+		return value, nil
+	}
+	return nil, nil
 }
 
 func extractSprintIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
@@ -797,6 +819,10 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 		f.Type = jira.IssueType{Name: value.Type}
 		f.Unknowns = make(tcontainer.MarshalMap)
 		f.Unknowns["custom_fields"] = value.CustomFields
+		f.Unknowns["parent_status"] = value.ParentStatus
+		f.Unknowns["parent_status_category"] = value.ParentStatusCategory
+		f.Unknowns["parent_issue_type"] = value.ParentIssueType
+
 		n.ID = value.ID
 		n.Key = value.Key
 		n.Self = strings.TrimSuffix(*jiraConfig.BaseUrl, "/") + "/rest/api/2/issue/" + n.ID
@@ -816,30 +842,33 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 // generate expression key string from columns in d.QueryContext.Columns
 func getKeyString(ctx context.Context, columns []string) string {
 	columnMapping := map[string]string{
-		"id":                    "id: JSON.stringify(issue.id)",
-		"key":                   "key: issue.key",
-		"project_name":          "projectName: issue.project.name",
-		"project_id":            "projectId: JSON.stringify(issue.project.id)",
-		"project_key":           "projectKey: issue.project.key",
-		"status":                "statusName: issue.status.name",
-		"status_category":       "statusCategory: issue.status.category.name",
-		"assignee_account_id":   "assigneeId: JSON.stringify(issue.assignee?.accountId)",
-		"assignee_display_name": "assigneeName: issue.assignee?.displayName",
-		"creator_account_id":    "creatorId: JSON.stringify(issue.creator?.accountId)",
-		"creator_display_name":  "creatorName: issue.creator?.displayName",
-		"created":               "created: issue.created",
-		"duedate":               "dueDate: issue.dueDate",
-		"description":           "description: issue.description?.plainText",
-		"type":                  "issueType: issue.issueType.name",
-		"labels":                "labels: issue.labels",
-		"priority":              "priority: issue.priority.name",
-		"reporter_display_name": "reporterName: issue.reporter?.displayName",
-		"reporter_account_id":   "reporterId: JSON.stringify(issue.reporter?.accountId)",
-		"resolution_date":       "resolutionDate: issue.resolutionDate",
-		"summary":               "summary: issue.summary",
-		"updated":               "updated: issue.updated",
-		"parent_key":            "parentKey: issue.parent?.key",
-		"component":             "components: issue.components.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
+		"id":                     "id: JSON.stringify(issue.id)",
+		"key":                    "key: issue.key",
+		"project_name":           "projectName: issue.project.name",
+		"project_id":             "projectId: JSON.stringify(issue.project.id)",
+		"project_key":            "projectKey: issue.project.key",
+		"status":                 "statusName: issue.status.name",
+		"status_category":        "statusCategory: issue.status.category.name",
+		"assignee_account_id":    "assigneeId: JSON.stringify(issue.assignee?.accountId)",
+		"assignee_display_name":  "assigneeName: issue.assignee?.displayName",
+		"creator_account_id":     "creatorId: JSON.stringify(issue.creator?.accountId)",
+		"creator_display_name":   "creatorName: issue.creator?.displayName",
+		"created":                "created: issue.created",
+		"duedate":                "dueDate: issue.dueDate",
+		"description":            "description: issue.description?.plainText",
+		"type":                   "issueType: issue.issueType.name",
+		"labels":                 "labels: issue.labels",
+		"priority":               "priority: issue.priority.name",
+		"reporter_display_name":  "reporterName: issue.reporter?.displayName",
+		"reporter_account_id":    "reporterId: JSON.stringify(issue.reporter?.accountId)",
+		"resolution_date":        "resolutionDate: issue.resolutionDate",
+		"summary":                "summary: issue.summary",
+		"updated":                "updated: issue.updated",
+		"parent_key":             "parentKey: issue.parent?.key",
+		"parent_status":          "parentStatus: issue.parent?.status?.name",
+		"parent_status_category": "parentStatusCategory: issue.parent?.status?.statusCategory?.name",
+		"parent_issue_type":      "parentIssueType: issue.parent?.issueType?.name",
+		"component":              "components: issue.components.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 		//"components": "components: issue.components?.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 	}
 	customFieldMap := getRequiredCustomField()
@@ -852,8 +881,9 @@ func getKeyString(ctx context.Context, columns []string) string {
 		} else if customKey, ok := customFieldMap[column]; ok {
 			customFieldName := customKey["key"].(string)
 			customKeys = append(customKeys, customFieldName+": JSON.stringify(issue."+customFieldName+")")
+		} else {
+			plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.getKeyString", "column not found in mapping", column)
 		}
-		plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.getKeyString", "column not found in mapping", column)
 	}
 	if len(customKeys) > 0 {
 		columnMapping["custom_fields"] = "customFields: {" + strings.Join(customKeys, ",") + "}"
@@ -1009,32 +1039,35 @@ type searchResult struct {
 }
 
 type issueExpressionValue struct {
-	ID             string                 `json:"id,omitempty" structs:"id,omitempty"`
-	Key            string                 `json:"key,omitempty" structs:"key,omitempty"`
-	Self           string                 `json:"self,omitempty" structs:"self,omitempty"`
-	Summary        string                 `json:"summary,omitempty" structs:"summary,omitempty"`
-	Type           string                 `json:"issueType,omitempty" structs:"issueType,omitempty"`
-	CreatorID      string                 `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
-	CreatorName    string                 `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
-	Components     []map[string]string    `json:"components,omitempty" structs:"components,omitempty"`
-	Created        string                 `json:"created,omitempty" structs:"created,omitempty"`
-	ProjectName    string                 `json:"projectName,omitempty" structs:"projectName,omitempty"`
-	ProjectID      string                 `json:"projectId,omitempty" structs:"projectId,omitempty"`
-	ProjectKey     string                 `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
-	Description    string                 `json:"description,omitempty" structs:"description,omitempty"`
-	ReporterName   string                 `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
-	ReporterID     string                 `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
-	Priority       string                 `json:"priority,omitempty" structs:"priority,omitempty"`
-	Labels         []string               `json:"labels,omitempty" structs:"labels,omitempty"`
-	Duedate        string                 `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
-	ResolutionDate string                 `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
-	AssigneeID     string                 `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
-	AssigneeName   string                 `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
-	Updated        string                 `json:"updated,omitempty" structs:"updated,omitempty"`
-	StatusName     string                 `json:"statusName,omitempty" structs:"statusName,omitempty"`
-	StatusCategory string                 `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
-	ParentKey      string                 `json:"parentKey,omitempty" structs:"parentKey,omitempty"`
-	CustomFields   map[string]interface{} `json:"customFields,omitempty" structs:"customFields,omitempty"`
+	ID                   string                 `json:"id,omitempty" structs:"id,omitempty"`
+	Key                  string                 `json:"key,omitempty" structs:"key,omitempty"`
+	Self                 string                 `json:"self,omitempty" structs:"self,omitempty"`
+	Summary              string                 `json:"summary,omitempty" structs:"summary,omitempty"`
+	Type                 string                 `json:"issueType,omitempty" structs:"issueType,omitempty"`
+	CreatorID            string                 `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
+	CreatorName          string                 `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
+	Components           []map[string]string    `json:"components,omitempty" structs:"components,omitempty"`
+	Created              string                 `json:"created,omitempty" structs:"created,omitempty"`
+	ProjectName          string                 `json:"projectName,omitempty" structs:"projectName,omitempty"`
+	ProjectID            string                 `json:"projectId,omitempty" structs:"projectId,omitempty"`
+	ProjectKey           string                 `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
+	Description          string                 `json:"description,omitempty" structs:"description,omitempty"`
+	ReporterName         string                 `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
+	ReporterID           string                 `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
+	Priority             string                 `json:"priority,omitempty" structs:"priority,omitempty"`
+	Labels               []string               `json:"labels,omitempty" structs:"labels,omitempty"`
+	Duedate              string                 `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
+	ResolutionDate       string                 `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
+	AssigneeID           string                 `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
+	AssigneeName         string                 `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
+	Updated              string                 `json:"updated,omitempty" structs:"updated,omitempty"`
+	StatusName           string                 `json:"statusName,omitempty" structs:"statusName,omitempty"`
+	StatusCategory       string                 `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
+	ParentKey            string                 `json:"parentKey,omitempty" structs:"parentKey,omitempty"`
+	ParentStatus         string                 `json:"parentStatus,omitempty" structs:"parentStatus,omitempty"`
+	ParentStatusCategory string                 `json:"parentStatusCategory,omitempty" structs:"parentStatusCategory,omitempty"`
+	ParentIssueType      string                 `json:"parentIssueType,omitempty" structs:"parentIssueType,omitempty"`
+	CustomFields         map[string]interface{} `json:"customFields,omitempty" structs:"customFields,omitempty"`
 }
 
 type issueExpressionResult struct {

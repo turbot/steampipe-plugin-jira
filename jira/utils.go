@@ -191,8 +191,15 @@ func getRequiredCustomField() map[string]map[string]interface{} {
 
 func getIssueJQLKey(columnName string) string {
 	customFieldMap := getRequiredCustomField()
+	jqlFieldMap := map[string]string{
+		"parent_key":        "parent",
+		"parent_status":     "parentStatus",
+		"parent_issue_type": "parentIssueType",
+	}
 	// if the column name is in the map, return the value else return the column name
-	if customField, ok := customFieldMap[columnName]; ok {
+	if field, ok := jqlFieldMap[columnName]; ok {
+		return field
+	} else if customField, ok := customFieldMap[columnName]; ok {
 		return customField["name"].(string)
 	} else {
 		return strings.ToLower(strings.Split(columnName, "_")[0])
