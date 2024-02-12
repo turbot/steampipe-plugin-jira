@@ -21,8 +21,8 @@ import (
 
 //// TABLE DEFINITION
 
-func tableIssue(_ context.Context) *plugin.Table {
-	return &plugin.Table{
+func tableIssue(ctx context.Context) *plugin.Table {
+	issueTable := &plugin.Table{
 		Name:        "jira_issue",
 		Description: "Issues help manage code, estimate workload, and keep track of team.",
 		Get: &plugin.GetConfig{
@@ -52,9 +52,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "resolution_date", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "status_category", Require: plugin.Optional, Operators: []string{"=", "<>"}},
-				{Name: "releasecommit", Require: plugin.Optional, Operators: []string{"=", "<>"}},
-				{Name: "etv", Require: plugin.Optional, Operators: []string{"=", "<>"}},
-				{Name: "vteam", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "updated", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 			},
@@ -236,27 +233,6 @@ func tableIssue(_ context.Context) *plugin.Table {
 				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
 			},
 			{
-				Name:        "etv",
-				Description: "A list of labels applied to the issue.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromP(extractArrayCustomField, "etv").Transform(lowerIfCaseInsensitive),
-				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
-			},
-			{
-				Name:        "releasecommit",
-				Description: "A list of labels applied to the issue.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromP(extractValueCustomField, "releasecommit").Transform(lowerIfCaseInsensitive),
-				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
-			},
-			{
-				Name:        "vteam",
-				Description: "A list of labels applied to the issue.",
-				Type:        proto.ColumnType_STRING,
-				Transform:   transform.FromP(extractValueCustomField, "vteam").Transform(lowerIfCaseInsensitive),
-				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
-			},
-			{
 				Name:        "component",
 				Description: "List of components Name associated with the issue.",
 				Type:        proto.ColumnType_STRING,
@@ -290,6 +266,45 @@ func tableIssue(_ context.Context) *plugin.Table {
 			},
 		},
 	}
+	customFieldMap := getRequiredCustomField()
+
+	for key, customField := range customFieldMap {
+		if fieldType, ok := customField["type"].(string); ok {
+			if fieldType == "array" {
+				issueTable.Columns = append(issueTable.Columns, &plugin.Column{
+					Name:        key,
+					Description: customField["name"].(string),
+					Type:        proto.ColumnType_STRING,
+					Transform:   transform.FromP(extractArrayCustomField, customField["key"]).Transform(lowerIfCaseInsensitive),
+				})
+			} else if fieldType == "option" || fieldType == "option-with-child" {
+				issueTable.Columns = append(issueTable.Columns, &plugin.Column{
+					Name:        key,
+					Description: customField["name"].(string),
+					Type:        proto.ColumnType_STRING,
+					Transform:   transform.FromP(extractOptionCustomField, customField["key"]).Transform(lowerIfCaseInsensitive),
+				})
+			} else if fieldType == "string" {
+				issueTable.Columns = append(issueTable.Columns, &plugin.Column{
+					Name:        key,
+					Description: customField["name"].(string),
+					Type:        proto.ColumnType_STRING,
+					Transform:   transform.FromP(extractStringCustomField, customField["key"]).Transform(lowerIfCaseInsensitive),
+				})
+			} else {
+				plugin.Logger(ctx).Error("jira_issue::tableIssue", "Unknown custom field type", fieldType, key, customField["name"])
+			}
+		}
+		if searchable, ok := customField["searchable"].(bool); ok && searchable {
+			issueTable.List.KeyColumns = append(issueTable.List.KeyColumns, &plugin.KeyColumn{
+				Name:      key,
+				Require:   plugin.Optional,
+				Operators: []string{"=", "<>"},
+			})
+		}
+	}
+
+	return issueTable
 }
 
 //// LIST FUNCTION
@@ -513,16 +528,41 @@ func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 
 func extractArrayCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	issueInfo := d.HydrateItem.(IssueInfo)
-	m := issueInfo.Fields.Unknowns
-	param := d.Param.(string)
-	j := m[param].(string)
-	var cMap []map[string]interface{}
-	var l []string
-	json.Unmarshal([]byte(j), &cMap)
-	for _, item := range cMap {
-		l = append(l, item["name"].(string))
+	if m, ok := issueInfo.Fields.Unknowns["custom_fields"].(map[string]interface{}); ok {
+		param := d.Param.(string)
+		if j, ok := m[param].(string); ok {
+			var cMap []map[string]interface{}
+			var l []string
+			json.Unmarshal([]byte(j), &cMap)
+			for _, item := range cMap {
+				l = append(l, item["name"].(string))
+			}
+			return strings.Join(l, ","), nil
+		} else {
+			plugin.Logger(ctx).Debug("extractArrayCustomField::custom_fields value does not exist", param)
+		}
+	} else {
+		plugin.Logger(ctx).Debug("extractArrayCustomField::custom_fields does not exist")
 	}
-	return strings.Join(l, ","), nil
+	return nil, nil
+}
+
+func extractOptionCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	if m, ok := issueInfo.Fields.Unknowns["custom_fields"].(map[string]interface{}); ok {
+		param := d.Param.(string)
+		if j, ok := m[param].(string); ok {
+			var cMap map[string]interface{}
+			json.Unmarshal([]byte(j), &cMap)
+			return cMap["value"], nil
+		} else {
+			plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields value does not exist", param)
+		}
+	} else {
+		plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields does not exist")
+
+	}
+	return nil, nil
 }
 
 func extractValueCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
@@ -535,34 +575,21 @@ func extractValueCustomField(ctx context.Context, d *transform.TransformData) (i
 	return cMap["value"], nil
 }
 
-func extractETV(ctx context.Context, d *transform.TransformData) (interface{}, error) {
-	unknown := d.Value.(tcontainer.MarshalMap)
-	etv_value := unknown["etv"].(string)
-	var etvMap []map[string]interface{}
-	var etvList []string
-	json.Unmarshal([]byte(etv_value), &etvMap)
-	for _, item := range etvMap {
-		etvList = append(etvList, item["name"].(string))
+func extractStringCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	if m, ok := issueInfo.Fields.Unknowns["custom_fields"].(map[string]interface{}); ok {
+		param := d.Param.(string)
+		if j, ok := m[param].(string); ok {
+			var cMap string
+			json.Unmarshal([]byte(j), &cMap)
+			return cMap, nil
+		} else {
+			plugin.Logger(ctx).Debug("extractStringCustomField::custom_fields value does not exist", param)
+		}
+	} else {
+		plugin.Logger(ctx).Debug("extractStringCustomField::custom_fields does not exist")
 	}
-	return strings.Join(etvList, ","), nil
-}
-
-func extractReleaseCommit(ctx context.Context, d *transform.TransformData) (interface{}, error) {
-	unknown := d.Value.(tcontainer.MarshalMap)
-	jsonString := unknown["releasecommit"].(string)
-	var releaseCommitMap map[string]interface{}
-
-	json.Unmarshal([]byte(jsonString), &releaseCommitMap)
-	return releaseCommitMap["value"], nil
-}
-
-func extractVteam(ctx context.Context, d *transform.TransformData) (interface{}, error) {
-	unknown := d.Value.(tcontainer.MarshalMap)
-	jsonString := unknown["vteam"].(string)
-	var vteamMap map[string]interface{}
-
-	json.Unmarshal([]byte(jsonString), &vteamMap)
-	return vteamMap["value"], nil
+	return nil, nil
 }
 
 func extractComponentIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
@@ -769,9 +796,7 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 		f.Summary = value.Summary
 		f.Type = jira.IssueType{Name: value.Type}
 		f.Unknowns = make(tcontainer.MarshalMap)
-		f.Unknowns["etv"] = value.ETV
-		f.Unknowns["vteam"] = value.VTeam
-		f.Unknowns["releasecommit"] = value.ReleaseCommit
+		f.Unknowns["custom_fields"] = value.CustomFields
 		n.ID = value.ID
 		n.Key = value.Key
 		n.Self = strings.TrimSuffix(*jiraConfig.BaseUrl, "/") + "/rest/api/2/issue/" + n.ID
@@ -814,19 +839,25 @@ func getKeyString(ctx context.Context, columns []string) string {
 		"summary":               "summary: issue.summary",
 		"updated":               "updated: issue.updated",
 		"parent_key":            "parentKey: issue.parent?.key",
-		"releasecommit":         "releasecommit: JSON.stringify(issue.customfield_13139)",
-		"etv":                   "etv: JSON.stringify(issue.customfield_13193)",
-		"vteam":                 "vteam: JSON.stringify(issue.customfield_13323)",
 		"component":             "components: issue.components.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 		//"components": "components: issue.components?.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 	}
+	customFieldMap := getRequiredCustomField()
+
 	keys := []string{}
+	var customKeys []string
 	for _, column := range columns {
 		if key, ok := columnMapping[column]; ok {
 			keys = append(keys, key)
-		} else {
-			plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.getKeyString", "column not found in mapping", column)
+		} else if customKey, ok := customFieldMap[column]; ok {
+			customFieldName := customKey["key"].(string)
+			customKeys = append(customKeys, customFieldName+": JSON.stringify(issue."+customFieldName+")")
 		}
+		plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.getKeyString", "column not found in mapping", column)
+	}
+	if len(customKeys) > 0 {
+		columnMapping["custom_fields"] = "customFields: {" + strings.Join(customKeys, ",") + "}"
+		keys = append(keys, columnMapping["custom_fields"])
 	}
 	return strings.Join(keys, ",")
 }
@@ -978,34 +1009,32 @@ type searchResult struct {
 }
 
 type issueExpressionValue struct {
-	ID             string              `json:"id,omitempty" structs:"id,omitempty"`
-	Key            string              `json:"key,omitempty" structs:"key,omitempty"`
-	Self           string              `json:"self,omitempty" structs:"self,omitempty"`
-	Summary        string              `json:"summary,omitempty" structs:"summary,omitempty"`
-	Type           string              `json:"issueType,omitempty" structs:"issueType,omitempty"`
-	CreatorID      string              `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
-	CreatorName    string              `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
-	Components     []map[string]string `json:"components,omitempty" structs:"components,omitempty"`
-	Created        string              `json:"created,omitempty" structs:"created,omitempty"`
-	ProjectName    string              `json:"projectName,omitempty" structs:"projectName,omitempty"`
-	ProjectID      string              `json:"projectId,omitempty" structs:"projectId,omitempty"`
-	ProjectKey     string              `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
-	Description    string              `json:"description,omitempty" structs:"description,omitempty"`
-	ReporterName   string              `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
-	ReporterID     string              `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
-	Priority       string              `json:"priority,omitempty" structs:"priority,omitempty"`
-	Labels         []string            `json:"labels,omitempty" structs:"labels,omitempty"`
-	Duedate        string              `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
-	ResolutionDate string              `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
-	AssigneeID     string              `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
-	AssigneeName   string              `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
-	Updated        string              `json:"updated,omitempty" structs:"updated,omitempty"`
-	StatusName     string              `json:"statusName,omitempty" structs:"statusName,omitempty"`
-	StatusCategory string              `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
-	ParentKey      string              `json:"parentKey,omitempty" structs:"parentKey,omitempty"`
-	ETV            string              `json:"etv,omitempty" structs:"etv,omitempty"`
-	VTeam          string              `json:"vteam,omitempty" structs:"vteam,omitempty"`
-	ReleaseCommit  string              `json:"releasecommit,omitempty" structs:"releasecommit,omitempty"`
+	ID             string                 `json:"id,omitempty" structs:"id,omitempty"`
+	Key            string                 `json:"key,omitempty" structs:"key,omitempty"`
+	Self           string                 `json:"self,omitempty" structs:"self,omitempty"`
+	Summary        string                 `json:"summary,omitempty" structs:"summary,omitempty"`
+	Type           string                 `json:"issueType,omitempty" structs:"issueType,omitempty"`
+	CreatorID      string                 `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
+	CreatorName    string                 `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
+	Components     []map[string]string    `json:"components,omitempty" structs:"components,omitempty"`
+	Created        string                 `json:"created,omitempty" structs:"created,omitempty"`
+	ProjectName    string                 `json:"projectName,omitempty" structs:"projectName,omitempty"`
+	ProjectID      string                 `json:"projectId,omitempty" structs:"projectId,omitempty"`
+	ProjectKey     string                 `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
+	Description    string                 `json:"description,omitempty" structs:"description,omitempty"`
+	ReporterName   string                 `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
+	ReporterID     string                 `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
+	Priority       string                 `json:"priority,omitempty" structs:"priority,omitempty"`
+	Labels         []string               `json:"labels,omitempty" structs:"labels,omitempty"`
+	Duedate        string                 `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
+	ResolutionDate string                 `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
+	AssigneeID     string                 `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
+	AssigneeName   string                 `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
+	Updated        string                 `json:"updated,omitempty" structs:"updated,omitempty"`
+	StatusName     string                 `json:"statusName,omitempty" structs:"statusName,omitempty"`
+	StatusCategory string                 `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
+	ParentKey      string                 `json:"parentKey,omitempty" structs:"parentKey,omitempty"`
+	CustomFields   map[string]interface{} `json:"customFields,omitempty" structs:"customFields,omitempty"`
 }
 
 type issueExpressionResult struct {

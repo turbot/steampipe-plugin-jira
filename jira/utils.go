@@ -165,15 +165,35 @@ func buildJQLQueryFromQuals(ctx context.Context, equalQuals plugin.KeyColumnQual
 	return ""
 }
 
-func getIssueJQLKey(columnName string) string {
-	jqlKeyMap := map[string]string{
-		"releasecommit": "Release Commit",
-		"etv":           "Eng Target Version/s",
-		"vteam":         "V-team/P-team",
+func getRequiredCustomField() map[string]map[string]interface{} {
+	customFieldMap := map[string]map[string]interface{}{
+		"etv": {
+			"key":        "customfield_13193",
+			"name":       "Eng Target Version/s",
+			"searchable": true,
+			"type":       "array",
+		},
+		"release_commit": {
+			"key":        "customfield_13139",
+			"name":       "Release Commit",
+			"searchable": true,
+			"type":       "option",
+		},
+		"vteam": {
+			"key":        "customfield_13323",
+			"name":       "V-team/P-team",
+			"searchable": true,
+			"type":       "option-with-child",
+		},
 	}
+	return customFieldMap
+}
+
+func getIssueJQLKey(columnName string) string {
+	customFieldMap := getRequiredCustomField()
 	// if the column name is in the map, return the value else return the column name
-	if jqlKey, ok := jqlKeyMap[columnName]; ok {
-		return strings.ToLower(jqlKey)
+	if customField, ok := customFieldMap[columnName]; ok {
+		return customField["name"].(string)
 	} else {
 		return strings.ToLower(strings.Split(columnName, "_")[0])
 	}
