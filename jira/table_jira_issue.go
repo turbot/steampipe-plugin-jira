@@ -426,8 +426,13 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		// return error if user requests too much data
 		plugin.Logger(ctx).Debug(fmt.Sprintf("Number of results=%d , Our limit=%d.", searchResult.Total, issueLimit))
 		if searchResult.Total > issueLimit {
-			//return nil, errors.New(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
-			plugin.Logger(ctx).Debug(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
+			m := fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit)
+			r, _ := getRowLimitError(ctx, d)
+			if r {
+				return nil, errors.New(m)
+			} else {
+				plugin.Logger(ctx).Debug(m)
+			}
 		}
 
 		sensitivity, err := getCaseSensitivity(ctx, d)

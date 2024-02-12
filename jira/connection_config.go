@@ -17,6 +17,7 @@ type jiraConfig struct {
 	ProjectLimit        *int    `cty:"project_limit"`
 	BoardLimit          *int    `cty:"board_limit"`
 	SprintLimit         *int    `cty:"sprint_limit"`
+	RowLimitError       *bool   `cty:"row_limit_error"`
 }
 
 var ConfigSchema = map[string]*schema.Attribute{
@@ -52,6 +53,9 @@ var ConfigSchema = map[string]*schema.Attribute{
 	},
 	"sprint_limit": {
 		Type: schema.TypeInt,
+	},
+	"row_limit_error": {
+		Type: schema.TypeBool,
 	},
 }
 

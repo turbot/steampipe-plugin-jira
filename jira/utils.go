@@ -310,3 +310,14 @@ func getSprintLimit(_ context.Context, d *plugin.QueryData) (int, error) {
 
 	return sprintLimit, nil
 }
+
+func getRowLimitError(_ context.Context, d *plugin.QueryData) (bool, error) {
+	jiraConfig := GetConfig(d.Connection)
+
+	rowLimitError := true
+	if jiraConfig.RowLimitError != nil {
+		rowLimitError = *jiraConfig.RowLimitError
+	}
+
+	return rowLimitError, nil
+}
