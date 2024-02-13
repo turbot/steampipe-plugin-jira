@@ -31,7 +31,7 @@ func tableIssue(ctx context.Context) *plugin.Table {
 			// https://support.atlassian.com/jira-service-management-cloud/docs/advanced-search-reference-jql-fields/
 			KeyColumns: plugin.KeyColumnSlice{
 				{Name: "id", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
-				{Name: "key", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<", "IN"}},
+				{Name: "key", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "assignee_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "assignee_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "created", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
