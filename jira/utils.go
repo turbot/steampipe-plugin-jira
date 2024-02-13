@@ -192,6 +192,8 @@ func getRequiredCustomField() map[string]map[string]interface{} {
 func getIssueJQLKey(columnName string) string {
 	customFieldMap := getRequiredCustomField()
 	jqlFieldMap := map[string]string{
+		"resolution_date":   "resolutionDate",
+		"status_category":   "statusCategory",
 		"parent_key":        "parent",
 		"parent_status":     "parentStatus",
 		"parent_issue_type": "parentIssueType",
