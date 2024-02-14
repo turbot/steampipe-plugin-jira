@@ -289,27 +289,23 @@ func tableIssue(ctx context.Context) *plugin.Table {
 
 	for key, customField := range customFieldMap {
 		if fieldType, ok := customField["type"].(string); ok {
+			newColumn := &plugin.Column{
+				Name:        key,
+				Description: customField["name"].(string),
+				Type:        proto.ColumnType_STRING,
+			}
 			if fieldType == "array" {
-				issueTable.Columns = append(issueTable.Columns, &plugin.Column{
-					Name:        key,
-					Description: customField["name"].(string),
-					Type:        proto.ColumnType_STRING,
-					Transform:   transform.FromP(extractArrayCustomField, customField["key"]).Transform(lowerIfCaseInsensitive),
-				})
+				newColumn.Transform = transform.FromP(extractArrayCustomField, customField["key"]).Transform(lowerIfCaseInsensitive)
+				issueTable.Columns = append(issueTable.Columns, newColumn)
 			} else if fieldType == "option" || fieldType == "option-with-child" {
-				issueTable.Columns = append(issueTable.Columns, &plugin.Column{
-					Name:        key,
-					Description: customField["name"].(string),
-					Type:        proto.ColumnType_STRING,
-					Transform:   transform.FromP(extractOptionCustomField, customField["key"]).Transform(lowerIfCaseInsensitive),
-				})
+				newColumn.Transform = transform.FromP(extractOptionCustomField, customField["key"]).Transform(lowerIfCaseInsensitive)
+				issueTable.Columns = append(issueTable.Columns, newColumn)
 			} else if fieldType == "string" {
-				issueTable.Columns = append(issueTable.Columns, &plugin.Column{
-					Name:        key,
-					Description: customField["name"].(string),
-					Type:        proto.ColumnType_STRING,
-					Transform:   transform.FromP(extractStringCustomField, customField["key"]).Transform(lowerIfCaseInsensitive),
-				})
+				newColumn.Transform = transform.FromP(extractStringCustomField, customField["key"]).Transform(lowerIfCaseInsensitive)
+				issueTable.Columns = append(issueTable.Columns, newColumn)
+			} else if fieldType == "any" {
+				newColumn.Transform = transform.FromP(extractAnyCustomField, customField["key"]).Transform(lowerIfCaseInsensitive)
+				issueTable.Columns = append(issueTable.Columns, newColumn)
 			} else {
 				plugin.Logger(ctx).Error("jira_issue::tableIssue", "Unknown custom field type", fieldType, key, customField["name"])
 			}
@@ -612,6 +608,23 @@ func extractStringCustomField(ctx context.Context, d *transform.TransformData) (
 		}
 	} else {
 		plugin.Logger(ctx).Debug("extractStringCustomField::custom_fields does not exist")
+	}
+	return nil, nil
+}
+
+func extractAnyCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	if m, ok := issueInfo.Fields.Unknowns["custom_fields"].(map[string]interface{}); ok {
+		param := d.Param.(string)
+		if j, ok := m[param].(string); ok {
+			var cMap map[string]interface{}
+			json.Unmarshal([]byte(j), &cMap)
+			return cMap, nil
+		} else {
+			plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields value does not exist", param)
+		}
+	} else {
+		plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields does not exist")
 	}
 	return nil, nil
 }
@@ -996,10 +1009,14 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 		"summary",
 		"updated",
 		"components",
-		// TODO: get fields programatically via API
-		"customfield_10007", // sprint
-		"customfield_10300", // epic
-		// "customfield_11600", // parent
+	}
+	// TODO: get fields programatically via API and don't rely on customFields
+	customFields := getRequiredCustomField()
+	if sprint, ok := customFields["sprint"]["key"]; ok {
+		fields = append(fields, sprint.(string))
+	}
+	if epic, ok := customFields["epic"]["key"]; ok {
+		fields = append(fields, epic.(string))
 	}
 	fieldString := strings.Join(fields, ",")
 	uv.Add("fields", fieldString)

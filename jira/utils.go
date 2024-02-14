@@ -185,6 +185,18 @@ func getRequiredCustomField() map[string]map[string]interface{} {
 			"searchable": true,
 			"type":       "option-with-child",
 		},
+		"sprint": {
+			"key":        "customfield_10007",
+			"name":       "Sprint",
+			"searchable": true,
+			"type":       "array",
+		},
+		"epic": {
+			"key":        "customfield_10300",
+			"name":       "Epic Link",
+			"searchable": true,
+			"type":       "any",
+		},
 	}
 	return customFieldMap
 }
