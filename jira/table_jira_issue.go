@@ -25,7 +25,6 @@ func tableIssue(ctx context.Context) *plugin.Table {
 	issueTable := &plugin.Table{
 		Name:        "jira_issue",
 		Description: "Issues help manage code, estimate workload, and keep track of team.",
-
 		List: &plugin.ListConfig{
 			Hydrate: listIssues,
 			// https://support.atlassian.com/jira-service-management-cloud/docs/advanced-search-reference-jql-fields/
@@ -49,6 +48,7 @@ func tableIssue(ctx context.Context) *plugin.Table {
 				{Name: "reporter_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "reporter_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "resolution_date", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
+				{Name: "sprint_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "status_category", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
@@ -114,18 +114,21 @@ func tableIssue(ctx context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Parent.Key").Transform(lowerIfCaseInsensitive),
 			},
+			// TODO: extract without using extractRequiredField
 			{
 				Name:        "parent_issue_type",
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromP(extractRequiredField, "parent_issue_type").Transform(lowerIfCaseInsensitive),
 			},
+			// TODO: extract without using extractRequiredField
 			{
 				Name:        "parent_status",
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromP(extractRequiredField, "parent_status").Transform(lowerIfCaseInsensitive),
 			},
+			// TODO: extract without using extractRequiredField
 			{
 				Name:        "parent_status_category",
 				Description: "The key of the epic to which issue belongs.",
@@ -135,14 +138,14 @@ func tableIssue(ctx context.Context) *plugin.Table {
 			{
 				Name:        "sprint_ids",
 				Description: "The list of ids of the sprint to which issue belongs.",
-				Type:        proto.ColumnType_JSON,
+				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromP(extractRequiredField, "sprint").Transform(extractSprintIds),
 			},
 			{
-				Name:        "sprint_names",
+				Name:        "sprint_name",
 				Description: "The list of names of the sprint to which issue belongs.",
-				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromP(extractRequiredField, "sprint").Transform(extractSprintNames),
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractRequiredField, "sprint").Transform(extractSprintNames).Transform(lowerIfCaseInsensitive),
 			},
 
 			// other important fields
@@ -333,6 +336,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	useExpression := true
 	columnRequiresJQL := map[string]struct{}{}
 	columnRequiresJQL["sprint_ids"] = struct{}{}
+	columnRequiresJQL["sprint_name"] = struct{}{}
 	columnRequiresJQL["sprint_names"] = struct{}{}
 	columnRequiresJQL["epic_key"] = struct{}{}
 	columnRequiresJQL["tags"] = struct{}{}
@@ -636,37 +640,37 @@ func extractRequiredField(_ context.Context, d *transform.TransformData) (interf
 	issueInfo := d.HydrateItem.(IssueInfo)
 	m := issueInfo.Fields.Unknowns
 	param := d.Param.(string)
-	if value, ok := m[param]; ok {
-		return value, nil
-	}
-	return nil, nil
+	return m[issueInfo.Keys[param]], nil
 }
 
 func extractSprintIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	if d.Value == nil {
 		return nil, nil
 	}
-	var sprintIds []interface{}
+	var sprintIds []string
 	for _, item := range d.Value.([]interface{}) {
 		if sprint, ok := item.(map[string]interface{}); ok {
-			sprintIds = append(sprintIds, sprint["id"])
+			sprintIds = append(sprintIds, fmt.Sprint(sprint["id"]))
 		}
 	}
 
-	return sprintIds, nil
+	return strings.Join(sprintIds, ","), nil
 }
+
 func extractSprintNames(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	if d.Value == nil {
 		return nil, nil
 	}
-	var sprintNames []interface{}
+	var sprintNames []string
 	for _, item := range d.Value.([]interface{}) {
 		if sprint, ok := item.(map[string]interface{}); ok {
-			sprintNames = append(sprintNames, sprint["name"])
+			if name, ok := sprint["name"].(string); ok {
+				sprintNames = append(sprintNames, name)
+			}
 		}
 	}
 
-	return sprintNames, nil
+	return strings.Join(sprintNames, ","), nil
 }
 
 func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, error) {
@@ -990,6 +994,9 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 		"summary",
 		"updated",
 		"components",
+		// TODO: get fields programatically via API
+		// "customfield_10007", // sprint
+		// "customfield_10300", // epic
 	}
 	fieldString := strings.Join(fields, ",")
 	uv.Add("fields", fieldString)
