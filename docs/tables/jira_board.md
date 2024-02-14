@@ -1,19 +1,32 @@
-# Table: jira_board
+---
+title: "Steampipe Table: jira_board - Query Jira Boards using SQL"
+description: "Allows users to query Jira Boards, providing detailed insights into board configurations, types, and associated projects."
+---
 
-A **Board** displays issues from one or more projects, giving you a flexible way of viewing, managing, and reporting on work in progress.
-There are three types of boards in Jira Software:
+# Table: jira_board - Query Jira Boards using SQL
 
-- Team-managed board: For teams who are new to agile. Get your team up-and-running with this simplified board. The set-up is straight-forward and streamlined, delivering more power progressively as you need it.
+Jira Boards is a feature within Atlassian's Jira Software that allows teams to visualize their work. Boards can be customized to fit the unique workflow of any team, making it easier to manage tasks and projects. They provide a visual and interactive interface to track the progress of work.
 
-- Scrum board: For teams that plan their work in sprints. Includes a backlog.
+## Table Usage Guide
 
-- Kanban board: For teams that focus on managing and constraining their work-in-progress. Includes the option of a Kanban backlog.
+The `jira_board` table provides insights into Jira Boards within Atlassian's Jira Software. As a project manager or a team lead, you can explore board-specific details through this table, including board configurations, types, and associated projects. Utilize it to uncover information about boards, such as their associated projects, the types of boards, and their configurations.
 
 ## Examples
 
 ### Basic info
+Explore the types of boards in your Jira project and identify any associated filters. This can help in understanding the organization and management of tasks within your project.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  type,
+  filter_id
+from
+  jira_board;
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -24,8 +37,21 @@ from
 ```
 
 ### List all scrum boards
+Explore which project management boards are organized using the Scrum methodology. This can help you assess the prevalence and usage of this agile framework within your organization.
 
-```sql
+```sql+postgres
+select
+  id,
+  name,
+  type,
+  filter_id
+from
+  jira_board
+where
+  type = 'scrum';
+```
+
+```sql+sqlite
 select
   id,
   name,
@@ -38,8 +64,9 @@ where
 ```
 
 ### List sprints in a board
+Explore the various sprints associated with a specific board to manage project timelines effectively. This can help in tracking progress and identifying any bottlenecks in the project workflow.
 
-```sql
+```sql+postgres
 select
   s.board_id,
   b.name as board_name,
@@ -52,5 +79,22 @@ from
   jira_sprint as s,
   jira_board as b
 where
+  s.board_id = b.id;
+```
+
+```sql+sqlite
+select
+  s.board_id,
+  b.name as board_name,
+  b.type as board_type,
+  s.id as sprint_id,
+  s.name as sprint_name,
+  start_date,
+  end_date
+from
+  jira_sprint as s
+join
+  jira_board as b
+on
   s.board_id = b.id;
 ```
