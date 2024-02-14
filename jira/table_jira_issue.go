@@ -114,21 +114,18 @@ func tableIssue(ctx context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Parent.Key").Transform(lowerIfCaseInsensitive),
 			},
-			// TODO: extract without using extractRequiredField
 			{
 				Name:        "parent_issue_type",
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromP(extractRequiredField, "parent_issue_type").Transform(lowerIfCaseInsensitive),
 			},
-			// TODO: extract without using extractRequiredField
 			{
 				Name:        "parent_status",
 				Description: "The key of the epic to which issue belongs.",
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromP(extractRequiredField, "parent_status").Transform(lowerIfCaseInsensitive),
 			},
-			// TODO: extract without using extractRequiredField
 			{
 				Name:        "parent_status_category",
 				Description: "The key of the epic to which issue belongs.",
@@ -640,7 +637,12 @@ func extractRequiredField(_ context.Context, d *transform.TransformData) (interf
 	issueInfo := d.HydrateItem.(IssueInfo)
 	m := issueInfo.Fields.Unknowns
 	param := d.Param.(string)
-	return m[issueInfo.Keys[param]], nil
+	if value, ok := m[param]; ok {
+		return value, nil
+	} else if value, ok := m[issueInfo.Keys[param]]; ok {
+		return value, nil
+	}
+	return nil, nil
 }
 
 func extractSprintIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
@@ -995,8 +997,9 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 		"updated",
 		"components",
 		// TODO: get fields programatically via API
-		// "customfield_10007", // sprint
-		// "customfield_10300", // epic
+		"customfield_10007", // sprint
+		"customfield_10300", // epic
+		// "customfield_11600", // parent
 	}
 	fieldString := strings.Join(fields, ",")
 	uv.Add("fields", fieldString)

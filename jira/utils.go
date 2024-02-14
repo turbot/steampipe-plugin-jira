@@ -192,11 +192,12 @@ func getRequiredCustomField() map[string]map[string]interface{} {
 func getIssueJQLKey(columnName string) string {
 	customFieldMap := getRequiredCustomField()
 	jqlFieldMap := map[string]string{
-		"resolution_date":   "resolutionDate",
-		"status_category":   "statusCategory",
-		"parent_key":        "parent",
-		"parent_status":     "parentStatus",
-		"parent_issue_type": "parentIssueType",
+		"resolution_date":        "resolutionDate",
+		"status_category":        "statusCategory",
+		"parent_key":             "parent",
+		"parent_status":          "parentStatus",
+		"parent_status_category": "parentStatusCategory",
+		"parent_issue_type":      "parentIssueType",
 	}
 	// if the column name is in the map, return the value else return the column name
 	if field, ok := jqlFieldMap[columnName]; ok {
