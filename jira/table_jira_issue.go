@@ -325,37 +325,20 @@ func tableIssue(ctx context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	useExpression := shouldUseExpression(d)
+	plugin.Logger(ctx).Debug("useExpression", useExpression)
 
-	useExpression := true
-	columnRequiresJQL := map[string]struct{}{}
-	columnRequiresJQL["sprint_ids"] = struct{}{}
-	columnRequiresJQL["sprint_name"] = struct{}{}
-	columnRequiresJQL["sprint_names"] = struct{}{}
-	columnRequiresJQL["epic_key"] = struct{}{}
-	columnRequiresJQL["tags"] = struct{}{}
-	columnRequiresJQL["components"] = struct{}{}
-	for _, column := range d.QueryContext.Columns {
-		if _, ok := columnRequiresJQL[column]; ok {
-			useExpression = false
-			break
-		}
-	}
-	plugin.Logger(ctx).Debug("jira_issue.listIssues", "useExpression", useExpression)
-
-	last := 0
-	issueCount := 1
-	numLoops := 5
 	issueLimit, err := getIssueLimit(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "issue_limit", err)
 		return nil, err
 	}
+
 	pageSize, err := getPageSize(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "page_size", err)
 		return nil, err
 	}
-	plugin.Logger(ctx).Debug("jira_issue.listIssues", "page_size", pageSize)
 
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
@@ -366,12 +349,14 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			limit = int(*queryLimit)
 		}
 	}
+
 	options := jira.SearchOptions{
 		StartAt:    0,
 		MaxResults: limit,
 		Expand:     "names",
 	}
 	jql := buildJQLQueryFromQuals(ctx, d.Quals, d.Table.Columns)
+
 	// set options.MaxResults to the smaller of user-defined limit and calculated
 	// maxResults value
 	if useExpression {
@@ -384,32 +369,21 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 	}
 
+	last := 0
+	numLoops := 5
+	issueCount := 1
 	for {
-		var searchResult *searchResult
-		var res *jira.Response
-		var err error
-		if useExpression {
-			searchResult, res, err = searchWithExpression(ctx, d, jql, &options)
-			if searchResult.MaxResults < options.MaxResults {
-				plugin.Logger(ctx).Debug("jira_issue.listIssues", "maxResults < options.MaxResults; lowering", searchResult.MaxResults)
-				options.MaxResults = searchResult.MaxResults
-			}
-			issueLimit = searchResult.MaxResults * numLoops
-		} else {
-			searchResult, res, err = searchWithContext(ctx, d, jql, &options)
-		}
+		searchResult, _, err := searchJiraIssues(ctx, d, &options, jql)
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "search_error", err)
 			return nil, err
 		}
 
-		issues := searchResult.Issues
-		var names map[string]string
-		if !useExpression {
-			names = searchResult.Names
+		if useExpression {
+			issueLimit = searchResult.MaxResults * numLoops
 		}
-		body, _ := io.ReadAll(res.Body)
-		plugin.Logger(ctx).Debug("jira_issue.listIssues", "res_body", string(body))
+		issues := searchResult.Issues
+		names := searchResult.Names
 
 		if err != nil {
 			if isNotFoundError(err) || isBadRequestError(err) {
@@ -420,7 +394,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 
 		// return error if user requests too much data
-		plugin.Logger(ctx).Debug(fmt.Sprintf("Number of results=%d , Our limit=%d.", searchResult.Total, issueLimit))
 		if searchResult.Total > issueLimit {
 			m := fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit)
 			r, _ := getRowLimitError(ctx, d)
@@ -435,7 +408,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		if err != nil {
 			return nil, err
 		}
-		plugin.Logger(ctx).Debug("jira_issue.listIssues", "case_sensitivity", sensitivity)
 
 		for _, issue := range issues {
 			if issueCount > issueLimit {
@@ -445,8 +417,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 			issue.Fields.Unknowns["sensitivity"] = sensitivity
 
-			// plugin.Logger(ctx).Debug("Issue output:", issue)
-			// plugin.Logger(ctx).Debug("Issue names output:", names)
 			var keys map[string]string
 			if !useExpression {
 				keys = map[string]string{
@@ -455,6 +425,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 				}
 			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
+
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
@@ -621,10 +592,10 @@ func extractAnyCustomField(ctx context.Context, d *transform.TransformData) (int
 			json.Unmarshal([]byte(j), &cMap)
 			return cMap, nil
 		} else {
-			plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields value does not exist", param)
+			// plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields value does not exist", param)
 		}
 	} else {
-		plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields does not exist")
+		// plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields does not exist")
 	}
 	return nil, nil
 }
@@ -720,7 +691,46 @@ func getIssueComponents(ctx context.Context, d *transform.TransformData) (interf
 
 }
 
-//// Utility Function
+// // Utility Function
+
+// wrapper function which handles searching for jira issues with the optimal method
+func searchJiraIssues(ctx context.Context, d *plugin.QueryData, options *jira.SearchOptions, jql string) (*searchResult, *jira.Response, error) {
+	useExpression := shouldUseExpression(d)
+	var searchResult *searchResult
+	var res *jira.Response
+	var err error
+
+	if useExpression {
+		searchResult, res, err = searchWithExpression(ctx, d, jql, options)
+		if searchResult.MaxResults < options.MaxResults {
+			plugin.Logger(ctx).Debug("jira_issue.listIssues.searchJiraIssues", "maxResults < options.MaxResults; lowering", searchResult.MaxResults)
+			options.MaxResults = searchResult.MaxResults
+		}
+	} else {
+		searchResult, res, err = searchWithContext(ctx, d, jql, options)
+	}
+
+	return searchResult, res, err
+}
+
+// determine if we should use jira expressions for issue search
+func shouldUseExpression(d *plugin.QueryData) bool {
+	useExpression := true
+	columnRequiresJQL := map[string]struct{}{}
+	columnRequiresJQL["sprint_ids"] = struct{}{}
+	columnRequiresJQL["sprint_name"] = struct{}{}
+	columnRequiresJQL["sprint_names"] = struct{}{}
+	columnRequiresJQL["epic_key"] = struct{}{}
+	columnRequiresJQL["tags"] = struct{}{}
+	columnRequiresJQL["components"] = struct{}{}
+	for _, column := range d.QueryContext.Columns {
+		if _, ok := columnRequiresJQL[column]; ok {
+			useExpression = false
+			break
+		}
+	}
+	return useExpression
+}
 
 // getFieldKey:: get key for unknown expanded fields
 func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]string, keyName string) string {
