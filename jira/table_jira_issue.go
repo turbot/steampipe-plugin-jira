@@ -385,14 +385,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		issues := searchResult.Issues
 		names := searchResult.Names
 
-		if err != nil {
-			if isNotFoundError(err) || isBadRequestError(err) {
-				return nil, nil
-			}
-			plugin.Logger(ctx).Error("jira_issue.listIssues", "api_error", err)
-			return nil, err
-		}
-
 		// return error if user requests too much data
 		if searchResult.Total > issueLimit {
 			m := fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit)
