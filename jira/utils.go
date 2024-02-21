@@ -167,21 +167,27 @@ func buildJQLQueryFromQuals(ctx context.Context, equalQuals plugin.KeyColumnQual
 
 func getRequiredCustomField() map[string]map[string]interface{} {
 	customFieldMap := map[string]map[string]interface{}{
-		"etv": {
+		"Eng Target Version/s": {
 			"key":        "customfield_13193",
 			"name":       "Eng Target Version/s",
 			"searchable": true,
 			"type":       "array",
 		},
-		"release_commit": {
+		"Release Commit": {
 			"key":        "customfield_13139",
 			"name":       "Release Commit",
 			"searchable": true,
 			"type":       "option",
 		},
-		"vteam": {
+		"V-team/P-team": {
 			"key":        "customfield_13323",
 			"name":       "V-team/P-team",
+			"searchable": true,
+			"type":       "option-with-child",
+		},
+		"Found-In Version": {
+			"key":        "customfield_13149",
+			"name":       "Found-In Version",
 			"searchable": true,
 			"type":       "option-with-child",
 		},
