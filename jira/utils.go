@@ -159,7 +159,9 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 			d.ConnectionManager.Cache.Set("jira_access_token", refreshToken)
 			plugin.Logger(ctx).Debug("Caching new access token, refresh token")
 			refreshTokenResponse := RefreshResponse{RefreshToken: refreshToken}
-			storeRefreshToken(ctx, refreshTokenFile, refreshTokenResponse)
+			if err := storeRefreshToken(ctx, refreshTokenFile, refreshTokenResponse); err != nil {
+				return nil, err
+			}
 			tokenProvider := jirav2.BearerAuthTransport{Token: accessToken}
 			client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
 		}
@@ -207,7 +209,9 @@ func getAccessToken(refreshToken string, clientId string, clientSecret string, r
 	client := &http.Client{}
 	resp, _ := client.Do(req)
 	response := make(map[string]interface{})
-	json.NewDecoder(resp.Body).Decode(&response)
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, err
+	}
 	mJson, err := json.Marshal(response)
 	jsonStr := string(mJson)
 	fmt.Println("The JSON data is: ")

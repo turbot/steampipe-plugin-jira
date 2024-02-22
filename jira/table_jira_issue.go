@@ -439,58 +439,58 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 //// HYDRATE FUNCTION
 
-func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Debug("getIssue")
+// func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+// 	logger := plugin.Logger(ctx)
+// 	logger.Debug("getIssue")
 
-	issueId := d.EqualsQualString("id")
-	key := d.EqualsQualString("key")
+// 	issueId := d.EqualsQualString("id")
+// 	key := d.EqualsQualString("key")
 
-	client, err := connect(ctx, d)
-	if err != nil {
-		plugin.Logger(ctx).Error("jira_issue.getIssue", "connection_error", err)
-		return nil, err
-	}
+// 	client, err := connect(ctx, d)
+// 	if err != nil {
+// 		plugin.Logger(ctx).Error("jira_issue.getIssue", "connection_error", err)
+// 		return nil, err
+// 	}
 
-	var id string
-	if issueId != "" {
-		id = issueId
-	} else if key != "" {
-		id = key
-	} else {
-		return nil, nil
-	}
+// 	var id string
+// 	if issueId != "" {
+// 		id = issueId
+// 	} else if key != "" {
+// 		id = key
+// 	} else {
+// 		return nil, nil
+// 	}
 
-	issue, res, err := client.Issue.Get(id, &jira.GetQueryOptions{
-		Expand: "names",
-	})
-	body, _ := io.ReadAll(res.Body)
-	plugin.Logger(ctx).Debug("jira_issue.getIssue", "res_body", string(body))
-	if err != nil {
-		if isNotFoundError(err) {
-			return nil, nil
-		}
-		plugin.Logger(ctx).Error("jira_issue.getIssue", "api_error", err)
-		return nil, err
-	}
+// 	issue, res, err := client.Issue.Get(id, &jira.GetQueryOptions{
+// 		Expand: "names",
+// 	})
+// 	body, _ := io.ReadAll(res.Body)
+// 	plugin.Logger(ctx).Debug("jira_issue.getIssue", "res_body", string(body))
+// 	if err != nil {
+// 		if isNotFoundError(err) {
+// 			return nil, nil
+// 		}
+// 		plugin.Logger(ctx).Error("jira_issue.getIssue", "api_error", err)
+// 		return nil, err
+// 	}
 
-	if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
-		return nil, err
-	} else {
-		plugin.Logger(ctx).Debug("jira_issue.getIssue", "case_sensitivity", sensitivity)
-		issue.Fields.Unknowns["sensitivity"] = sensitivity
-	}
+// 	if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
+// 		return nil, err
+// 	} else {
+// 		plugin.Logger(ctx).Debug("jira_issue.getIssue", "case_sensitivity", sensitivity)
+// 		issue.Fields.Unknowns["sensitivity"] = sensitivity
+// 	}
 
-	epicKey := getFieldKey(ctx, d, issue.Names, "Epic Link")
-	sprintKey := getFieldKey(ctx, d, issue.Names, "Sprint")
+// 	epicKey := getFieldKey(ctx, d, issue.Names, "Epic Link")
+// 	sprintKey := getFieldKey(ctx, d, issue.Names, "Sprint")
 
-	keys := map[string]string{
-		"epic":   epicKey,
-		"sprint": sprintKey,
-	}
+// 	keys := map[string]string{
+// 		"epic":   epicKey,
+// 		"sprint": sprintKey,
+// 	}
 
-	return IssueInfo{*issue, keys}, err
-}
+// 	return IssueInfo{*issue, keys}, err
+// }
 
 func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
 	issue := h.Item.(IssueInfo)
@@ -517,7 +517,9 @@ func extractArrayCustomField(ctx context.Context, d *transform.TransformData) (i
 		if j, ok := m[param].(string); ok {
 			var cMap []map[string]interface{}
 			var l []string
-			json.Unmarshal([]byte(j), &cMap)
+			if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+				return nil, err
+			}
 			for _, item := range cMap {
 				l = append(l, item["name"].(string))
 			}
@@ -537,7 +539,9 @@ func extractOptionCustomField(ctx context.Context, d *transform.TransformData) (
 		param := d.Param.(string)
 		if j, ok := m[param].(string); ok {
 			var cMap map[string]interface{}
-			json.Unmarshal([]byte(j), &cMap)
+			if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+				return nil, err
+			}
 			return cMap["value"], nil
 		} else {
 			//plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields value does not exist", param)
@@ -548,15 +552,17 @@ func extractOptionCustomField(ctx context.Context, d *transform.TransformData) (
 	return nil, nil
 }
 
-func extractValueCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
-	issueInfo := d.HydrateItem.(IssueInfo)
-	m := issueInfo.Fields.Unknowns
-	param := d.Param.(string)
-	j := m[param].(string)
-	var cMap map[string]interface{}
-	json.Unmarshal([]byte(j), &cMap)
-	return cMap["value"], nil
-}
+// func extractValueCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+// 	issueInfo := d.HydrateItem.(IssueInfo)
+// 	m := issueInfo.Fields.Unknowns
+// 	param := d.Param.(string)
+// 	j := m[param].(string)
+// 	var cMap map[string]interface{}
+// 	if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+// 		return nil, err
+// 	}
+// 	return cMap["value"], nil
+// }
 
 func extractStringCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	issueInfo := d.HydrateItem.(IssueInfo)
@@ -564,7 +570,9 @@ func extractStringCustomField(ctx context.Context, d *transform.TransformData) (
 		param := d.Param.(string)
 		if j, ok := m[param].(string); ok {
 			var cMap string
-			json.Unmarshal([]byte(j), &cMap)
+			if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+				return nil, err
+			}
 			return cMap, nil
 		} else {
 			plugin.Logger(ctx).Debug("extractStringCustomField::custom_fields value does not exist", param)
@@ -581,7 +589,9 @@ func extractAnyCustomField(ctx context.Context, d *transform.TransformData) (int
 		param := d.Param.(string)
 		if j, ok := m[param].(string); ok {
 			var cMap map[string]interface{}
-			json.Unmarshal([]byte(j), &cMap)
+			if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+				return nil, err
+			}
 			return cMap, nil
 		} else {
 			// plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields value does not exist", param)
@@ -668,20 +678,20 @@ func getIssueLabels(_ context.Context, d *transform.TransformData) (interface{},
 	return strings.Join(issue.Fields.Labels, ","), nil
 }
 
-func getIssueComponents(ctx context.Context, d *transform.TransformData) (interface{}, error) {
-	issue := d.HydrateItem.(IssueInfo)
+// func getIssueComponents(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+// 	issue := d.HydrateItem.(IssueInfo)
 
-	var componentNames []string
-	if issue.Fields != nil && issue.Fields.Components != nil {
-		for _, i := range issue.Fields.Components {
-			plugin.Logger(ctx).Debug("getIssueComponents", i)
-			componentNames = append(componentNames, i.Name)
-		}
-	}
-	result := strings.Join(componentNames, ",")
-	return result, nil
+// 	var componentNames []string
+// 	if issue.Fields != nil && issue.Fields.Components != nil {
+// 		for _, i := range issue.Fields.Components {
+// 			plugin.Logger(ctx).Debug("getIssueComponents", i)
+// 			componentNames = append(componentNames, i.Name)
+// 		}
+// 	}
+// 	result := strings.Join(componentNames, ",")
+// 	return result, nil
 
-}
+// }
 
 // // Utility Function
 
