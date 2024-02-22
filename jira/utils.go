@@ -213,6 +213,9 @@ func getAccessToken(refreshToken string, clientId string, clientSecret string, r
 		return nil, err
 	}
 	mJson, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
 	jsonStr := string(mJson)
 	fmt.Println("The JSON data is: ")
 	fmt.Println(jsonStr)

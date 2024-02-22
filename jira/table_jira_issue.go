@@ -524,11 +524,7 @@ func extractArrayCustomField(ctx context.Context, d *transform.TransformData) (i
 				l = append(l, item["name"].(string))
 			}
 			return strings.Join(l, ","), nil
-		} else {
-			//plugin.Logger(ctx).Debug("extractArrayCustomField::custom_fields value does not exist", param)
 		}
-	} else {
-		//plugin.Logger(ctx).Debug("extractArrayCustomField::custom_fields does not exist")
 	}
 	return nil, nil
 }
@@ -543,11 +539,7 @@ func extractOptionCustomField(ctx context.Context, d *transform.TransformData) (
 				return nil, err
 			}
 			return cMap["value"], nil
-		} else {
-			//plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields value does not exist", param)
 		}
-	} else {
-		//plugin.Logger(ctx).Debug("extractOptionCustomField::custom_fields does not exist")
 	}
 	return nil, nil
 }
@@ -593,11 +585,7 @@ func extractAnyCustomField(ctx context.Context, d *transform.TransformData) (int
 				return nil, err
 			}
 			return cMap, nil
-		} else {
-			// plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields value does not exist", param)
 		}
-	} else {
-		// plugin.Logger(ctx).Debug("extractAnyCustomField::custom_fields does not exist")
 	}
 	return nil, nil
 }
