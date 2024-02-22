@@ -2,7 +2,6 @@ package jira
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -182,7 +181,7 @@ func listComponents(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 
 		// return error if user requests too much data
 		if listResult.Total > componentLimit {
-			return nil, errors.New(fmt.Sprintf("Number of results exceeds component limit(%d>%d). Please make your query more specific.", listResult.Total, componentLimit))
+			return nil, fmt.Errorf("Number of results exceeds component limit(%d>%d). Please make your query more specific.", listResult.Total, componentLimit)
 		}
 
 		sensitivity, err := getCaseSensitivity(ctx, d)

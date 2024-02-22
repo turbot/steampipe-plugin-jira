@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,25 +21,26 @@ import (
 
 //// TABLE DEFINITION
 
-func tableIssue(_ context.Context) *plugin.Table {
-	return &plugin.Table{
+func tableIssue(ctx context.Context) *plugin.Table {
+	issueTable := &plugin.Table{
 		Name:        "jira_issue",
 		Description: "Issues help manage code, estimate workload, and keep track of team.",
-		Get: &plugin.GetConfig{
-			KeyColumns: plugin.AnyColumn([]string{"id", "key"}),
-			Hydrate:    getIssue,
-		},
 		List: &plugin.ListConfig{
 			Hydrate: listIssues,
 			// https://support.atlassian.com/jira-service-management-cloud/docs/advanced-search-reference-jql-fields/
 			KeyColumns: plugin.KeyColumnSlice{
+				{Name: "id", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
+				{Name: "key", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "assignee_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "assignee_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "created", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "creator_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "creator_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "component", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "labels", Require: plugin.Optional, Operators: []string{"=", "<>", "~~"}},
 				{Name: "duedate", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 				{Name: "epic_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "parent_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "priority", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "project_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "project_key", Require: plugin.Optional, Operators: []string{"=", "<>"}},
@@ -46,9 +48,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "reporter_account_id", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "reporter_display_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "resolution_date", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
+				{Name: "sprint_name", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "status_category", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "parent_issue_type", Require: plugin.Optional, Operators: []string{"=", "<>"}},
+				{Name: "parent_status", Require: plugin.Optional, Operators: []string{"=", "<>"}},
 				{Name: "updated", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 			},
 		},
@@ -104,16 +109,40 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromP(extractRequiredField, "epic").Transform(lowerIfCaseInsensitive),
 			},
 			{
+				Name:        "parent_key",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Parent.Key").Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "parent_issue_type",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractRequiredField, "parent_issue_type").Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "parent_status",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractRequiredField, "parent_status").Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "parent_status_category",
+				Description: "The key of the epic to which issue belongs.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractRequiredField, "parent_status_category").Transform(lowerIfCaseInsensitive),
+			},
+			{
 				Name:        "sprint_ids",
 				Description: "The list of ids of the sprint to which issue belongs.",
-				Type:        proto.ColumnType_JSON,
+				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromP(extractRequiredField, "sprint").Transform(extractSprintIds),
 			},
 			{
-				Name:        "sprint_names",
+				Name:        "sprint_name",
 				Description: "The list of names of the sprint to which issue belongs.",
-				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromP(extractRequiredField, "sprint").Transform(extractSprintNames),
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromP(extractRequiredField, "sprint").Transform(extractSprintNames).Transform(lowerIfCaseInsensitive),
 			},
 
 			// other important fields
@@ -165,12 +194,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Type.Name").Transform(lowerIfCaseInsensitive),
 			},
-			{
+			/*{
 				Name:        "labels",
 				Description: "A list of labels applied to the issue.",
 				Type:        proto.ColumnType_JSON,
 				Transform:   transform.FromField("Fields.Labels"),
-			},
+			},*/
 			{
 				Name:        "priority",
 				Description: "Priority assigned to the issue.",
@@ -216,9 +245,23 @@ func tableIssue(_ context.Context) *plugin.Table {
 
 			// JSON fields
 			{
+				Name:        "labels",
+				Description: "A list of labels applied to the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.From(getIssueLabels).Transform(lowerIfCaseInsensitive),
+				//Transform:   transform.From("Fields.Components").Transform(extractLabels).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
+			},
+			{
+				Name:        "component",
+				Description: "List of components Name associated with the issue.",
+				Type:        proto.ColumnType_STRING,
+				Transform:   transform.FromField("Fields.Components").Transform(extractComponentNames).Transform(lowerIfCaseInsensitive),
+				//Transform:   transform.From("Fields.Components").Transform(extractComponentNames).Transform(convertToCsv).Transform(lowerIfCaseInsensitive),
+			},
+			{
 				Name:        "components",
 				Description: "List of components associated with the issue.",
-				Type:        proto.ColumnType_JSON,
+				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Fields.Components").Transform(extractComponentIds),
 			},
 			{
@@ -242,40 +285,60 @@ func tableIssue(_ context.Context) *plugin.Table {
 			},
 		},
 	}
+	customFieldMap := getRequiredCustomField()
+
+	for key, customField := range customFieldMap {
+		if fieldType, ok := customField["type"].(string); ok {
+			newColumn := &plugin.Column{
+				Name:        key,
+				Description: customField["name"].(string),
+				Type:        proto.ColumnType_STRING,
+			}
+			if fieldType == "array" {
+				newColumn.Transform = transform.FromP(extractArrayCustomField, customField["key"]).Transform(lowerIfCaseInsensitive)
+				issueTable.Columns = append(issueTable.Columns, newColumn)
+			} else if fieldType == "option" || fieldType == "option-with-child" {
+				newColumn.Transform = transform.FromP(extractOptionCustomField, customField["key"]).Transform(lowerIfCaseInsensitive)
+				issueTable.Columns = append(issueTable.Columns, newColumn)
+			} else if fieldType == "string" {
+				newColumn.Transform = transform.FromP(extractStringCustomField, customField["key"]).Transform(lowerIfCaseInsensitive)
+				issueTable.Columns = append(issueTable.Columns, newColumn)
+			} else if fieldType == "any" {
+				newColumn.Transform = transform.FromP(extractAnyCustomField, customField["key"]).Transform(lowerIfCaseInsensitive)
+				issueTable.Columns = append(issueTable.Columns, newColumn)
+			} else {
+				plugin.Logger(ctx).Error("jira_issue::tableIssue", "Unknown custom field type", fieldType, key, customField["name"])
+			}
+		}
+		if searchable, ok := customField["searchable"].(bool); ok && searchable {
+			issueTable.List.KeyColumns = append(issueTable.List.KeyColumns, &plugin.KeyColumn{
+				Name:      key,
+				Require:   plugin.Optional,
+				Operators: []string{"=", "<>"},
+			})
+		}
+	}
+
+	return issueTable
 }
 
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	useExpression := shouldUseExpression(d)
+	plugin.Logger(ctx).Debug("useExpression", useExpression)
 
-	useExpression := true
-	columnRequiresJQL := map[string]struct{}{}
-	columnRequiresJQL["sprint_ids"] = struct{}{}
-	columnRequiresJQL["sprint_names"] = struct{}{}
-	columnRequiresJQL["epic_key"] = struct{}{}
-	columnRequiresJQL["tags"] = struct{}{}
-	for _, column := range d.QueryContext.Columns {
-		if _, ok := columnRequiresJQL[column]; ok {
-			useExpression = false
-			break
-		}
-	}
-	plugin.Logger(ctx).Debug("jira_issue.listIssues", "useExpression", useExpression)
-
-	last := 0
-	issueCount := 1
-	numLoops := 5
 	issueLimit, err := getIssueLimit(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "issue_limit", err)
 		return nil, err
 	}
+
 	pageSize, err := getPageSize(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "page_size", err)
 		return nil, err
 	}
-	plugin.Logger(ctx).Debug("jira_issue.listIssues", "page_size", pageSize)
 
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
@@ -286,14 +349,14 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			limit = int(*queryLimit)
 		}
 	}
+
 	options := jira.SearchOptions{
 		StartAt:    0,
 		MaxResults: limit,
 		Expand:     "names",
 	}
+	jql := buildJQLQueryFromQuals(ctx, d.Quals, d.Table.Columns)
 
-	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
-	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
 	// set options.MaxResults to the smaller of user-defined limit and calculated
 	// maxResults value
 	if useExpression {
@@ -306,52 +369,37 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		}
 	}
 
+	last := 0
+	numLoops := 5
+	issueCount := 1
 	for {
-		var searchResult *searchResult
-		var res *jira.Response
-		var err error
-		if useExpression {
-			searchResult, res, err = searchWithExpression(ctx, d, jql, &options)
-			if searchResult.MaxResults < options.MaxResults {
-				plugin.Logger(ctx).Debug("jira_issue.listIssues", "maxResults < options.MaxResults; lowering", searchResult.MaxResults)
-				options.MaxResults = searchResult.MaxResults
-			}
-			issueLimit = searchResult.MaxResults * numLoops
-		} else {
-			searchResult, res, err = searchWithContext(ctx, d, jql, &options)
-		}
+		searchResult, _, err := searchJiraIssues(ctx, d, &options, jql)
 		if err != nil {
 			plugin.Logger(ctx).Error("jira_issue.listIssues", "search_error", err)
 			return nil, err
 		}
 
+		if useExpression {
+			issueLimit = searchResult.MaxResults * numLoops
+		}
 		issues := searchResult.Issues
-		var names map[string]string
-		if !useExpression {
-			names = searchResult.Names
-		}
-		body, _ := io.ReadAll(res.Body)
-		plugin.Logger(ctx).Debug("jira_issue.listIssues", "res_body", string(body))
-
-		if err != nil {
-			if isNotFoundError(err) || isBadRequestError(err) {
-				return nil, nil
-			}
-			plugin.Logger(ctx).Error("jira_issue.listIssues", "api_error", err)
-			return nil, err
-		}
+		names := searchResult.Names
 
 		// return error if user requests too much data
 		if searchResult.Total > issueLimit {
-			//return nil, errors.New(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
-			plugin.Logger(ctx).Debug(fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit))
+			m := fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit)
+			r, _ := getRowLimitError(ctx, d)
+			if r {
+				return nil, errors.New(m)
+			} else {
+				plugin.Logger(ctx).Debug(m)
+			}
 		}
 
 		sensitivity, err := getCaseSensitivity(ctx, d)
 		if err != nil {
 			return nil, err
 		}
-		plugin.Logger(ctx).Debug("jira_issue.listIssues", "case_sensitivity", sensitivity)
 
 		for _, issue := range issues {
 			if issueCount > issueLimit {
@@ -361,8 +409,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 			issue.Fields.Unknowns["sensitivity"] = sensitivity
 
-			// plugin.Logger(ctx).Debug("Issue output:", issue)
-			// plugin.Logger(ctx).Debug("Issue names output:", names)
 			var keys map[string]string
 			if !useExpression {
 				keys = map[string]string{
@@ -371,6 +417,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 				}
 			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
+
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
 				return nil, nil
@@ -392,58 +439,58 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 
 //// HYDRATE FUNCTION
 
-func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-	logger := plugin.Logger(ctx)
-	logger.Debug("getIssue")
+// func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+// 	logger := plugin.Logger(ctx)
+// 	logger.Debug("getIssue")
 
-	issueId := d.EqualsQualString("id")
-	key := d.EqualsQualString("key")
+// 	issueId := d.EqualsQualString("id")
+// 	key := d.EqualsQualString("key")
 
-	client, err := connect(ctx, d)
-	if err != nil {
-		plugin.Logger(ctx).Error("jira_issue.getIssue", "connection_error", err)
-		return nil, err
-	}
+// 	client, err := connect(ctx, d)
+// 	if err != nil {
+// 		plugin.Logger(ctx).Error("jira_issue.getIssue", "connection_error", err)
+// 		return nil, err
+// 	}
 
-	var id string
-	if issueId != "" {
-		id = issueId
-	} else if key != "" {
-		id = key
-	} else {
-		return nil, nil
-	}
+// 	var id string
+// 	if issueId != "" {
+// 		id = issueId
+// 	} else if key != "" {
+// 		id = key
+// 	} else {
+// 		return nil, nil
+// 	}
 
-	issue, res, err := client.Issue.Get(id, &jira.GetQueryOptions{
-		Expand: "names",
-	})
-	body, _ := io.ReadAll(res.Body)
-	plugin.Logger(ctx).Debug("jira_issue.getIssue", "res_body", string(body))
-	if err != nil {
-		if isNotFoundError(err) {
-			return nil, nil
-		}
-		plugin.Logger(ctx).Error("jira_issue.getIssue", "api_error", err)
-		return nil, err
-	}
+// 	issue, res, err := client.Issue.Get(id, &jira.GetQueryOptions{
+// 		Expand: "names",
+// 	})
+// 	body, _ := io.ReadAll(res.Body)
+// 	plugin.Logger(ctx).Debug("jira_issue.getIssue", "res_body", string(body))
+// 	if err != nil {
+// 		if isNotFoundError(err) {
+// 			return nil, nil
+// 		}
+// 		plugin.Logger(ctx).Error("jira_issue.getIssue", "api_error", err)
+// 		return nil, err
+// 	}
 
-	if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
-		return nil, err
-	} else {
-		plugin.Logger(ctx).Debug("jira_issue.getIssue", "case_sensitivity", sensitivity)
-		issue.Fields.Unknowns["sensitivity"] = sensitivity
-	}
+// 	if sensitivity, err := getCaseSensitivity(ctx, d); err != nil {
+// 		return nil, err
+// 	} else {
+// 		plugin.Logger(ctx).Debug("jira_issue.getIssue", "case_sensitivity", sensitivity)
+// 		issue.Fields.Unknowns["sensitivity"] = sensitivity
+// 	}
 
-	epicKey := getFieldKey(ctx, d, issue.Names, "Epic Link")
-	sprintKey := getFieldKey(ctx, d, issue.Names, "Sprint")
+// 	epicKey := getFieldKey(ctx, d, issue.Names, "Epic Link")
+// 	sprintKey := getFieldKey(ctx, d, issue.Names, "Sprint")
 
-	keys := map[string]string{
-		"epic":   epicKey,
-		"sprint": sprintKey,
-	}
+// 	keys := map[string]string{
+// 		"epic":   epicKey,
+// 		"sprint": sprintKey,
+// 	}
 
-	return IssueInfo{*issue, keys}, err
-}
+// 	return IssueInfo{*issue, keys}, err
+// }
 
 func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
 	issue := h.Item.(IssueInfo)
@@ -461,48 +508,145 @@ func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 	}
 }
 
-//// TRANSFORM FUNCTION
+// // TRANSFORM FUNCTION
 
-func extractComponentIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
+func extractArrayCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	if m, ok := issueInfo.Fields.Unknowns["custom_fields"].(map[string]interface{}); ok {
+		param := d.Param.(string)
+		if j, ok := m[param].(string); ok {
+			var cMap []map[string]interface{}
+			var l []string
+			if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+				return nil, err
+			}
+			for _, item := range cMap {
+				l = append(l, item["name"].(string))
+			}
+			return strings.Join(l, ","), nil
+		}
+	}
+	return nil, nil
+}
+
+func extractOptionCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	if m, ok := issueInfo.Fields.Unknowns["custom_fields"].(map[string]interface{}); ok {
+		param := d.Param.(string)
+		if j, ok := m[param].(string); ok {
+			var cMap map[string]interface{}
+			if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+				return nil, err
+			}
+			return cMap["value"], nil
+		}
+	}
+	return nil, nil
+}
+
+// func extractValueCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+// 	issueInfo := d.HydrateItem.(IssueInfo)
+// 	m := issueInfo.Fields.Unknowns
+// 	param := d.Param.(string)
+// 	j := m[param].(string)
+// 	var cMap map[string]interface{}
+// 	if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+// 		return nil, err
+// 	}
+// 	return cMap["value"], nil
+// }
+
+func extractStringCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	if m, ok := issueInfo.Fields.Unknowns["custom_fields"].(map[string]interface{}); ok {
+		param := d.Param.(string)
+		if j, ok := m[param].(string); ok {
+			var cMap string
+			if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+				return nil, err
+			}
+			return cMap, nil
+		} else {
+			plugin.Logger(ctx).Debug("extractStringCustomField::custom_fields value does not exist", param)
+		}
+	} else {
+		plugin.Logger(ctx).Debug("extractStringCustomField::custom_fields does not exist")
+	}
+	return nil, nil
+}
+
+func extractAnyCustomField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+	if m, ok := issueInfo.Fields.Unknowns["custom_fields"].(map[string]interface{}); ok {
+		param := d.Param.(string)
+		if j, ok := m[param].(string); ok {
+			var cMap map[string]interface{}
+			if err := json.Unmarshal([]byte(j), &cMap); err != nil {
+				return nil, err
+			}
+			return cMap, nil
+		}
+	}
+	return nil, nil
+}
+
+func extractComponentIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	var componentIds []string
 	for _, item := range d.Value.([]*jira.Component) {
+		//plugin.Logger(ctx).Debug("extractComponentIds", item)
 		componentIds = append(componentIds, item.ID)
 	}
 	return componentIds, nil
+}
+
+func extractComponentNames(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	var componentNames []string
+	for _, item := range d.Value.([]*jira.Component) {
+		componentNames = append(componentNames, item.Name)
+	}
+	return strings.Join(componentNames, ","), nil
 }
 
 func extractRequiredField(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	issueInfo := d.HydrateItem.(IssueInfo)
 	m := issueInfo.Fields.Unknowns
 	param := d.Param.(string)
-	return m[issueInfo.Keys[param]], nil
+	if value, ok := m[param]; ok {
+		return value, nil
+	} else if value, ok := m[issueInfo.Keys[param]]; ok {
+		return value, nil
+	}
+	return nil, nil
 }
 
 func extractSprintIds(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	if d.Value == nil {
 		return nil, nil
 	}
-	var sprintIds []interface{}
+	var sprintIds []string
 	for _, item := range d.Value.([]interface{}) {
 		if sprint, ok := item.(map[string]interface{}); ok {
-			sprintIds = append(sprintIds, sprint["id"])
+			sprintIds = append(sprintIds, fmt.Sprint(sprint["id"]))
 		}
 	}
 
-	return sprintIds, nil
+	return strings.Join(sprintIds, ","), nil
 }
+
 func extractSprintNames(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	if d.Value == nil {
 		return nil, nil
 	}
-	var sprintNames []interface{}
+	var sprintNames []string
 	for _, item := range d.Value.([]interface{}) {
 		if sprint, ok := item.(map[string]interface{}); ok {
-			sprintNames = append(sprintNames, sprint["name"])
+			if name, ok := sprint["name"].(string); ok {
+				sprintNames = append(sprintNames, name)
+			}
 		}
 	}
 
-	return sprintNames, nil
+	return strings.Join(sprintNames, ","), nil
 }
 
 func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, error) {
@@ -517,7 +661,66 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 	return tags, nil
 }
 
-//// Utility Function
+func getIssueLabels(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	issue := d.HydrateItem.(IssueInfo)
+	return strings.Join(issue.Fields.Labels, ","), nil
+}
+
+// func getIssueComponents(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+// 	issue := d.HydrateItem.(IssueInfo)
+
+// 	var componentNames []string
+// 	if issue.Fields != nil && issue.Fields.Components != nil {
+// 		for _, i := range issue.Fields.Components {
+// 			plugin.Logger(ctx).Debug("getIssueComponents", i)
+// 			componentNames = append(componentNames, i.Name)
+// 		}
+// 	}
+// 	result := strings.Join(componentNames, ",")
+// 	return result, nil
+
+// }
+
+// // Utility Function
+
+// wrapper function which handles searching for jira issues with the optimal method
+func searchJiraIssues(ctx context.Context, d *plugin.QueryData, options *jira.SearchOptions, jql string) (*searchResult, *jira.Response, error) {
+	useExpression := shouldUseExpression(d)
+	var searchResult *searchResult
+	var res *jira.Response
+	var err error
+
+	if useExpression {
+		searchResult, res, err = searchWithExpression(ctx, d, jql, options)
+		if searchResult.MaxResults < options.MaxResults {
+			plugin.Logger(ctx).Debug("jira_issue.listIssues.searchJiraIssues", "maxResults < options.MaxResults; lowering", searchResult.MaxResults)
+			options.MaxResults = searchResult.MaxResults
+		}
+	} else {
+		searchResult, res, err = searchWithContext(ctx, d, jql, options)
+	}
+
+	return searchResult, res, err
+}
+
+// determine if we should use jira expressions for issue search
+func shouldUseExpression(d *plugin.QueryData) bool {
+	useExpression := true
+	columnRequiresJQL := map[string]struct{}{}
+	columnRequiresJQL["sprint_ids"] = struct{}{}
+	columnRequiresJQL["sprint_name"] = struct{}{}
+	columnRequiresJQL["sprint_names"] = struct{}{}
+	columnRequiresJQL["epic_key"] = struct{}{}
+	columnRequiresJQL["tags"] = struct{}{}
+	columnRequiresJQL["components"] = struct{}{}
+	for _, column := range d.QueryContext.Columns {
+		if _, ok := columnRequiresJQL[column]; ok {
+			useExpression = false
+			break
+		}
+	}
+	return useExpression
+}
 
 // getFieldKey:: get key for unknown expanded fields
 func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]string, keyName string) string {
@@ -541,6 +744,7 @@ func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]stri
 // attempts to convert the value to lowercase if it is not nil, otherwise returns nil
 func lowerIfCaseInsensitive(ctx context.Context, d *transform.TransformData) (interface{}, error) {
 	issue := d.HydrateItem.(IssueInfo)
+
 	sensitivity := issue.Fields.Unknowns["sensitivity"]
 	if sensitivity == "sensitive" {
 		return d.Value, nil
@@ -606,12 +810,12 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 	for _, value := range expressionResult.Values {
 		n := new(jira.Issue)
 		f := new(jira.IssueFields)
-
 		var components []*jira.Component
-		for _, cID := range value.Components {
-			components = append(components, &jira.Component{ID: cID})
+		for _, component := range value.Components {
+			components = append(components, &jira.Component{ID: component["id"], Name: component["name"]})
 		}
 		f.Components = components
+		f.Parent = &jira.Parent{Key: value.ParentKey}
 
 		timeLayout := "2006-01-02T15:04:05.999-0700"
 		created, _ := time.Parse(timeLayout, value.Created)
@@ -637,6 +841,10 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 		f.Summary = value.Summary
 		f.Type = jira.IssueType{Name: value.Type}
 		f.Unknowns = make(tcontainer.MarshalMap)
+		f.Unknowns["custom_fields"] = value.CustomFields
+		f.Unknowns["parent_status"] = value.ParentStatus
+		f.Unknowns["parent_status_category"] = value.ParentStatusCategory
+		f.Unknowns["parent_issue_type"] = value.ParentIssueType
 
 		n.ID = value.ID
 		n.Key = value.Key
@@ -657,37 +865,52 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 // generate expression key string from columns in d.QueryContext.Columns
 func getKeyString(ctx context.Context, columns []string) string {
 	columnMapping := map[string]string{
-		"id":                    "id: JSON.stringify(issue.id)",
-		"key":                   "key: issue.key",
-		"project_name":          "projectName: issue.project.name",
-		"project_id":            "projectId: JSON.stringify(issue.project.id)",
-		"project_key":           "projectKey: issue.project.key",
-		"status":                "statusName: issue.status.name",
-		"status_category":       "statusCategory: issue.status.category.name",
-		"assignee_account_id":   "assigneeId: JSON.stringify(issue.assignee?.accountId)",
-		"assignee_display_name": "assigneeName: issue.assignee?.displayName",
-		"creator_account_id":    "creatorId: JSON.stringify(issue.creator?.accountId)",
-		"creator_display_name":  "creatorName: issue.creator?.displayName",
-		"created":               "created: issue.created",
-		"duedate":               "dueDate: issue.dueDate",
-		"description":           "description: issue.description?.plainText",
-		"type":                  "issueType: issue.issueType.name",
-		"labels":                "labels: issue.labels",
-		"priority":              "priority: issue.priority.name",
-		"reporter_display_name": "reporterName: issue.reporter?.displayName",
-		"reporter_account_id":   "reporterId: JSON.stringify(issue.reporter?.accountId)",
-		"resolution_date":       "resolutionDate: issue.resolutionDate",
-		"summary":               "summary: issue.summary",
-		"updated":               "updated: issue.updated",
-		"components":            "components: issue.components.map(c => JSON.stringify(c.id)) ",
+		"id":                     "id: JSON.stringify(issue.id)",
+		"key":                    "key: issue.key",
+		"project_name":           "projectName: issue.project.name",
+		"project_id":             "projectId: JSON.stringify(issue.project.id)",
+		"project_key":            "projectKey: issue.project.key",
+		"status":                 "statusName: issue.status.name",
+		"status_category":        "statusCategory: issue.status.category.name",
+		"assignee_account_id":    "assigneeId: JSON.stringify(issue.assignee?.accountId)",
+		"assignee_display_name":  "assigneeName: issue.assignee?.displayName",
+		"creator_account_id":     "creatorId: JSON.stringify(issue.creator?.accountId)",
+		"creator_display_name":   "creatorName: issue.creator?.displayName",
+		"created":                "created: issue.created",
+		"duedate":                "dueDate: issue.dueDate",
+		"description":            "description: issue.description?.plainText",
+		"type":                   "issueType: issue.issueType.name",
+		"labels":                 "labels: issue.labels",
+		"priority":               "priority: issue.priority.name",
+		"reporter_display_name":  "reporterName: issue.reporter?.displayName",
+		"reporter_account_id":    "reporterId: JSON.stringify(issue.reporter?.accountId)",
+		"resolution_date":        "resolutionDate: issue.resolutionDate",
+		"summary":                "summary: issue.summary",
+		"updated":                "updated: issue.updated",
+		"parent_key":             "parentKey: issue.parent?.key",
+		"parent_status":          "parentStatus: issue.parent?.status?.name",
+		"parent_status_category": "parentStatusCategory: issue.parent?.status?.statusCategory?.name",
+		"parent_issue_type":      "parentIssueType: issue.parent?.issueType?.name",
+		"component":              "components: issue.components.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
+		//"components": "components: issue.components?.map(c => { id: JSON.stringify(c.id), name: c.name }) ",
 	}
+	customFieldMap := getRequiredCustomField()
+
 	keys := []string{}
+	var customKeys []string
 	for _, column := range columns {
 		if key, ok := columnMapping[column]; ok {
 			keys = append(keys, key)
+		} else if customKey, ok := customFieldMap[column]; ok {
+			customFieldName := customKey["key"].(string)
+			customKeys = append(customKeys, customFieldName+": JSON.stringify(issue."+customFieldName+")")
 		} else {
 			plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.getKeyString", "column not found in mapping", column)
 		}
+	}
+	if len(customKeys) > 0 {
+		columnMapping["custom_fields"] = "customFields: {" + strings.Join(customKeys, ",") + "}"
+		keys = append(keys, columnMapping["custom_fields"])
 	}
 	return strings.Join(keys, ",")
 }
@@ -787,6 +1010,14 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 		"updated",
 		"components",
 	}
+	// TODO: get fields programatically via API and don't rely on customFields
+	customFields := getRequiredCustomField()
+	if sprint, ok := customFields["sprint"]["key"]; ok {
+		fields = append(fields, sprint.(string))
+	}
+	if epic, ok := customFields["epic"]["key"]; ok {
+		fields = append(fields, epic.(string))
+	}
 	fieldString := strings.Join(fields, ",")
 	uv.Add("fields", fieldString)
 
@@ -839,30 +1070,35 @@ type searchResult struct {
 }
 
 type issueExpressionValue struct {
-	ID             string   `json:"id,omitempty" structs:"id,omitempty"`
-	Key            string   `json:"key,omitempty" structs:"key,omitempty"`
-	Self           string   `json:"self,omitempty" structs:"self,omitempty"`
-	Summary        string   `json:"summary,omitempty" structs:"summary,omitempty"`
-	Type           string   `json:"issueType,omitempty" structs:"issueType,omitempty"`
-	CreatorID      string   `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
-	CreatorName    string   `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
-	Components     []string `json:"components,omitempty" structs:"components,omitempty"`
-	Created        string   `json:"created,omitempty" structs:"created,omitempty"`
-	ProjectName    string   `json:"projectName,omitempty" structs:"projectName,omitempty"`
-	ProjectID      string   `json:"projectId,omitempty" structs:"projectId,omitempty"`
-	ProjectKey     string   `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
-	Description    string   `json:"description,omitempty" structs:"description,omitempty"`
-	ReporterName   string   `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
-	ReporterID     string   `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
-	Priority       string   `json:"priority,omitempty" structs:"priority,omitempty"`
-	Labels         []string `json:"labels,omitempty" structs:"labels,omitempty"`
-	Duedate        string   `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
-	ResolutionDate string   `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
-	AssigneeID     string   `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
-	AssigneeName   string   `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
-	Updated        string   `json:"updated,omitempty" structs:"updated,omitempty"`
-	StatusName     string   `json:"statusName,omitempty" structs:"statusName,omitempty"`
-	StatusCategory string   `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
+	ID                   string                 `json:"id,omitempty" structs:"id,omitempty"`
+	Key                  string                 `json:"key,omitempty" structs:"key,omitempty"`
+	Self                 string                 `json:"self,omitempty" structs:"self,omitempty"`
+	Summary              string                 `json:"summary,omitempty" structs:"summary,omitempty"`
+	Type                 string                 `json:"issueType,omitempty" structs:"issueType,omitempty"`
+	CreatorID            string                 `json:"creatorId,omitempty" structs:"creatorId,omitempty"`
+	CreatorName          string                 `json:"creatorName,omitempty" structs:"creatorName,omitempty"`
+	Components           []map[string]string    `json:"components,omitempty" structs:"components,omitempty"`
+	Created              string                 `json:"created,omitempty" structs:"created,omitempty"`
+	ProjectName          string                 `json:"projectName,omitempty" structs:"projectName,omitempty"`
+	ProjectID            string                 `json:"projectId,omitempty" structs:"projectId,omitempty"`
+	ProjectKey           string                 `json:"projectKey,omitempty" structs:"projectKey,omitempty"`
+	Description          string                 `json:"description,omitempty" structs:"description,omitempty"`
+	ReporterName         string                 `json:"reporterName,omitempty" structs:"reporterName,omitempty"`
+	ReporterID           string                 `json:"reporterId,omitempty" structs:"reporterId,omitempty"`
+	Priority             string                 `json:"priority,omitempty" structs:"priority,omitempty"`
+	Labels               []string               `json:"labels,omitempty" structs:"labels,omitempty"`
+	Duedate              string                 `json:"dueDate,omitempty" structs:"dueDate,omitempty"`
+	ResolutionDate       string                 `json:"resolutionDate,omitempty" structs:"resolutionDate,omitempty"`
+	AssigneeID           string                 `json:"assigneeId,omitempty" structs:"assigneeId,omitempty"`
+	AssigneeName         string                 `json:"assigneeName,omitempty" structs:"assigneeName,omitempty"`
+	Updated              string                 `json:"updated,omitempty" structs:"updated,omitempty"`
+	StatusName           string                 `json:"statusName,omitempty" structs:"statusName,omitempty"`
+	StatusCategory       string                 `json:"statusCategory,omitempty" structs:"statusCategory,omitempty"`
+	ParentKey            string                 `json:"parentKey,omitempty" structs:"parentKey,omitempty"`
+	ParentStatus         string                 `json:"parentStatus,omitempty" structs:"parentStatus,omitempty"`
+	ParentStatusCategory string                 `json:"parentStatusCategory,omitempty" structs:"parentStatusCategory,omitempty"`
+	ParentIssueType      string                 `json:"parentIssueType,omitempty" structs:"parentIssueType,omitempty"`
+	CustomFields         map[string]interface{} `json:"customFields,omitempty" structs:"customFields,omitempty"`
 }
 
 type issueExpressionResult struct {

@@ -9,13 +9,19 @@ type jiraConfig struct {
 	Username            *string `hcl:"username"`
 	Token               *string `hcl:"token"`
 	PersonalAccessToken *string `hcl:"personal_access_token"`
-	PageSize            *int    `cty:"page_size"`
-	CaseSensitivity     *string `cty:"case_sensitivity"`
-	IssueLimit          *int    `cty:"issue_limit"`
-	ComponentLimit      *int    `cty:"component_limit"`
-	ProjectLimit        *int    `cty:"project_limit"`
-	BoardLimit          *int    `cty:"board_limit"`
-	SprintLimit         *int    `cty:"sprint_limit"`
+	PageSize            *int    `hcl:"page_size"`
+	CaseSensitivity     *string `hcl:"case_sensitivity"`
+	IssueLimit          *int    `hcl:"issue_limit"`
+	ComponentLimit      *int    `hcl:"component_limit"`
+	ProjectLimit        *int    `hcl:"project_limit"`
+	BoardLimit          *int    `hcl:"board_limit"`
+	SprintLimit         *int    `hcl:"sprint_limit"`
+	RowLimitError       *bool   `hcl:"row_limit_error"`
+	ClientId            *string `hcl:"client_id"`
+	ClientSecret        *string `hcl:"client_secret"`
+	RedirectUri         *string `hcl:"redirect_uri"`
+	RefreshToken        *string `hcl:"refresh_token"`
+	RefreshUri          *string `hcl:"refresh_uri"`
 }
 
 func ConfigInstance() interface{} {
