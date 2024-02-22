@@ -2,7 +2,6 @@ package jira
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -194,7 +193,7 @@ func listProjects(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDat
 
 		// return error if user requests too much data
 		if projectList.Total > projectLimit {
-			return nil, errors.New(fmt.Sprintf("Number of results exceeds project limit(%d>%d). Please make your query more specific.", projectList.Total, projectLimit))
+			return nil, fmt.Errorf("Number of results exceeds project limit(%d>%d). Please make your query more specific.", projectList.Total, projectLimit)
 		}
 
 		for _, project := range projectList.Values {
