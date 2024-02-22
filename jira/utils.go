@@ -2,8 +2,10 @@ package jira
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -15,7 +17,44 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 )
 
-func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
+type RefreshResponse struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+func getStoredRefreshToken(ctx context.Context, jsonFile string) (RefreshResponse, error) {
+	var refreshResponse RefreshResponse
+	file, err := os.Open(jsonFile)
+	if err != nil {
+		plugin.Logger(ctx).Debug("Error opening ", file, " Error:", err)
+		return refreshResponse, err
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	plugin.Logger(ctx).Debug("Loading Access token from ", jsonFile)
+	err = decoder.Decode(&refreshResponse)
+	if err != nil {
+		plugin.Logger(ctx).Debug("Could not decode ", file, " Error:", err)
+		return refreshResponse, err
+	}
+	plugin.Logger(ctx).Debug("Response from ", jsonFile, " ", refreshResponse)
+	return refreshResponse, nil
+}
+
+func storeRefreshToken(ctx context.Context, jsonFile string, refreshResponse RefreshResponse) error {
+	file, err := os.Create(jsonFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(refreshResponse)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 
 	// Load connection from cache, which preserves throttling protection etc
 	cacheKey := "atlassian-jira"
@@ -28,6 +67,10 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	username := os.Getenv("JIRA_USER")
 	token := os.Getenv("JIRA_TOKEN")
 	personal_access_token := os.Getenv("JIRA_PERSONAL_ACCESS_TOKEN")
+	intialRefreshToken := os.Getenv("JIRA_REFRESH_TOKEN")
+	clientId := os.Getenv("JIRA_CLIENT_ID")
+	clientSecret := os.Getenv("JIRA_CLIENT_SECRET")
+	redirectUri := os.Getenv("OAUTH_REDIRECT_URI")
 
 	// Prefer config options given in Steampipe
 	jiraConfig := GetConfig(d.Connection)
@@ -44,6 +87,18 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if jiraConfig.PersonalAccessToken != nil {
 		personal_access_token = *jiraConfig.PersonalAccessToken
 	}
+	if jiraConfig.ClientId != nil {
+		clientId = *jiraConfig.ClientId
+	}
+	if jiraConfig.ClientSecret != nil {
+		clientSecret = *jiraConfig.ClientSecret
+	}
+	if jiraConfig.RedirectUri != nil {
+		redirectUri = *jiraConfig.RedirectUri
+	}
+	if jiraConfig.RefreshToken != nil {
+		intialRefreshToken = *jiraConfig.RefreshToken
+	}
 
 	if baseUrl == "" {
 		return nil, errors.New("'base_url' must be set in the connection configuration")
@@ -51,8 +106,8 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if username == "" && token != "" {
 		return nil, errors.New("'token' is set but 'username' is not set in the connection configuration")
 	}
-	if token == "" && personal_access_token == "" {
-		return nil, errors.New("'token' or 'personal_access_token' must be set in the connection configuration")
+	if token == "" && personal_access_token == "" && intialRefreshToken == "" {
+		return nil, errors.New("'token' or 'personal_access_token' or 'refresh_token' must be set in the connection configuration")
 	}
 	if token != "" && personal_access_token != "" {
 		return nil, errors.New("'token' and 'personal_access_token' are both set, please use only one auth method")
@@ -61,7 +116,54 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	var client *jira.Client
 	var err error
 
-	if personal_access_token != "" {
+	// https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/
+	// curl --request POST \
+	//    --url 'https://auth.atlassian.com/oauth/token' \
+	//    --header 'Content-Type: application/json' \
+	//    --data '{ "grant_type": "refresh_token", "client_id": "YOUR_CLIENT_ID", "client_secret": "YOUR_CLIENT_SECRET", "refresh_token": "YOUR_REFRESH_TOKEN" }'
+	//
+	//
+
+	var accessToken string
+	refreshTokenFile := "jira.refresh_token.json"
+	plugin.Logger(ctx).Debug("Using Refresh token flow", intialRefreshToken)
+	if intialRefreshToken != "" {
+		plugin.Logger(ctx).Debug("Using Refresh token flow")
+		if at, ok := d.ConnectionManager.Cache.Get("jira_access_token"); ok {
+			accessToken = at.(string)
+			plugin.Logger(ctx).Debug("Using cached access token")
+			tokenProvider := jirav2.BearerAuthTransport{Token: accessToken}
+			client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
+		} else {
+			plugin.Logger(ctx).Debug("Access token not found in cache, fetching new access token using refresh token flow")
+			var refreshToken string
+			if rft, ok := d.ConnectionManager.Cache.Get("jira_refresh_token"); ok {
+				plugin.Logger(ctx).Debug("Using cached refresh token", rft, ok)
+				refreshToken = rft.(string)
+			} else {
+				plugin.Logger(ctx).Debug("Refresh token not found in cache, fetching new refresh token from store or env")
+				refreshResponse, err := getStoredRefreshToken(ctx, refreshTokenFile)
+				if err == nil {
+					plugin.Logger(ctx).Debug("Refresh token from store")
+					refreshToken = refreshResponse.RefreshToken
+				} else {
+					plugin.Logger(ctx).Debug("Refresh token from environment")
+					refreshToken = intialRefreshToken
+				}
+			}
+			response, _ := getAccessToken(refreshToken, clientId, clientSecret, redirectUri)
+			accessToken = response["access_token"].(string)
+			//expiry := response["expires_in"].(int)
+			refreshToken = response["refresh_token"].(string)
+			d.ConnectionManager.Cache.SetWithTTL("jira_access_token", accessToken, 3000)
+			d.ConnectionManager.Cache.Set("jira_access_token", refreshToken)
+			plugin.Logger(ctx).Debug("Caching new access token, refresh token")
+			refreshTokenResponse := RefreshResponse{RefreshToken: refreshToken}
+			storeRefreshToken(ctx, refreshTokenFile, refreshTokenResponse)
+			tokenProvider := jirav2.BearerAuthTransport{Token: accessToken}
+			client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
+		}
+	} else if personal_access_token != "" {
 		// If the username is empty, let's assume the user is using a PAT
 		tokenProvider := jirav2.BearerAuthTransport{Token: personal_access_token}
 		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
@@ -88,6 +190,30 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 const (
 	ColumnDescriptionTitle = "Title of the resource."
 )
+
+func getAccessToken(refreshToken string, clientId string, clientSecret string, redirectUri string) (map[string]interface{}, error) {
+	// POST request to get access token and return response in JSON format
+	req, err := http.NewRequest(
+		"POST",
+		"https://auth.atlassian.com/oauth/token",
+		strings.NewReader("grant_type=refresh_token&client_id="+clientId+"&client_secret="+clientSecret+"&refresh_token="+refreshToken+"&redirect_uri="+redirectUri))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	client := &http.Client{}
+	resp, _ := client.Do(req)
+	response := make(map[string]interface{})
+	json.NewDecoder(resp.Body).Decode(&response)
+	mJson, err := json.Marshal(response)
+	jsonStr := string(mJson)
+	fmt.Println("The JSON data is: ")
+	fmt.Println(jsonStr)
+	return response, nil
+}
 
 //// TRANSFORM FUNCTION
 

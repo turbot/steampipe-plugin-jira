@@ -17,6 +17,11 @@ type jiraConfig struct {
 	BoardLimit          *int    `hcl:"board_limit"`
 	SprintLimit         *int    `hcl:"sprint_limit"`
 	RowLimitError       *bool   `hcl:"row_limit_error"`
+	ClientId            *string `hcl:"client_id"`
+	ClientSecret        *string `hcl:"client_secret"`
+	RedirectUri         *string `hcl:"redirect_uri"`
+	RefreshToken        *string `hcl:"refresh_token"`
+	RefreshUri          *string `hcl:"refresh_uri"`
 }
 
 func ConfigInstance() interface{} {
