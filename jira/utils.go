@@ -107,17 +107,24 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 		authMode = "basic"
 	}
 
+	// refresh_token = OAuth2.0(3LO)
 	if baseUrl == "" {
 		return nil, errors.New("'base_url' must be set in the connection configuration")
 	}
-	if username == "" && token != "" {
-		return nil, errors.New("'token' is set but 'username' is not set in the connection configuration")
-	}
-	if token == "" && personal_access_token == "" && intialRefreshToken == "" {
-		return nil, errors.New("'token' or 'personal_access_token' or 'refresh_token' must be set in the connection configuration")
-	}
-	if token != "" && personal_access_token != "" {
-		return nil, errors.New("'token' and 'personal_access_token' are both set, please use only one auth method")
+	if authMode == "refresh_token" {
+		if intialRefreshToken == "" {
+			return nil, errors.New("refresh_token must be set in the connection configuration for OAuth2.0(3LO) flow")
+		}
+	} else {
+		if username == "" && token != "" {
+			return nil, errors.New("'token' is set but 'username' is not set in the connection configuration")
+		}
+		if token == "" && personal_access_token == "" && intialRefreshToken == "" {
+			return nil, errors.New("'token' or 'personal_access_token' or 'refresh_token' must be set in the connection configuration")
+		}
+		if token != "" && personal_access_token != "" {
+			return nil, errors.New("'token' and 'personal_access_token' are both set, please use only one auth method")
+		}
 	}
 
 	var client *jira.Client
