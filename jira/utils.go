@@ -71,7 +71,7 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	clientId := os.Getenv("JIRA_CLIENT_ID")
 	clientSecret := os.Getenv("JIRA_CLIENT_SECRET")
 	redirectUri := os.Getenv("OAUTH_REDIRECT_URI")
-	authMode := os.Getenv("JIRA_AUTH_MODE")
+	var authMode string
 
 	// Prefer config options given in Steampipe
 	jiraConfig := GetConfig(d.Connection)
