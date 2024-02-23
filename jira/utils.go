@@ -71,6 +71,7 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	clientId := os.Getenv("JIRA_CLIENT_ID")
 	clientSecret := os.Getenv("JIRA_CLIENT_SECRET")
 	redirectUri := os.Getenv("OAUTH_REDIRECT_URI")
+	authMode := os.Getenv("JIRA_AUTH_MODE")
 
 	// Prefer config options given in Steampipe
 	jiraConfig := GetConfig(d.Connection)
@@ -100,6 +101,12 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 		intialRefreshToken = *jiraConfig.RefreshToken
 	}
 
+	if jiraConfig.AuthMode != nil {
+		authMode = *jiraConfig.AuthMode
+	} else {
+		authMode = "basic"
+	}
+
 	if baseUrl == "" {
 		return nil, errors.New("'base_url' must be set in the connection configuration")
 	}
@@ -125,9 +132,9 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	//
 
 	var accessToken string
-	refreshTokenFile := "jira.refresh_token.json"
-	plugin.Logger(ctx).Debug("Using Refresh token flow", intialRefreshToken)
-	if intialRefreshToken != "" {
+
+	if authMode == "refresh_token" {
+		refreshTokenFile := "/tmp/.jira.steampipe.7sd7sdjh324.json"
 		plugin.Logger(ctx).Debug("Using Refresh token flow")
 		if at, ok := d.ConnectionManager.Cache.Get("jira_access_token"); ok {
 			accessToken = at.(string)
@@ -170,6 +177,7 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 		tokenProvider := jirav2.BearerAuthTransport{Token: personal_access_token}
 		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
 	} else {
+		plugin.Logger(ctx).Debug("Using Basic Auth flow")
 		tokenProvider := jira.BasicAuthTransport{
 			Username: username,
 			Password: token,
