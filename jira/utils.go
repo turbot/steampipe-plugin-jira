@@ -165,7 +165,17 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 					refreshToken = intialRefreshToken
 				}
 			}
-			response, _ := getAccessToken(refreshToken, clientId, clientSecret, redirectUri)
+			response, err := getAccessToken(ctx, refreshToken, clientId, clientSecret, redirectUri)
+			if err != nil {
+				// One more try with the refresh token from the connection config
+				plugin.Logger(ctx).Info("Error getting access token with stored config: %s", err)
+				plugin.Logger(ctx).Info("Retrying with refresh token in connection config because of ", err)
+				response, err = getAccessToken(ctx, intialRefreshToken, clientId, clientSecret, redirectUri)
+			}
+			if err != nil {
+				plugin.Logger(ctx).Error("Error getting access token: %s", err)
+				return nil, fmt.Errorf("Error getting access token because of expired/invalid refresh token. : '%s'", err)
+			}
 			accessToken = response["access_token"].(string)
 			//expiry := response["expires_in"].(int)
 			refreshToken = response["refresh_token"].(string)
@@ -208,7 +218,7 @@ const (
 	ColumnDescriptionTitle = "Title of the resource."
 )
 
-func getAccessToken(refreshToken string, clientId string, clientSecret string, redirectUri string) (map[string]interface{}, error) {
+func getAccessToken(ctx context.Context, refreshToken string, clientId string, clientSecret string, redirectUri string) (map[string]interface{}, error) {
 	// POST request to get access token and return response in JSON format
 	req, err := http.NewRequest(
 		"POST",
@@ -223,17 +233,14 @@ func getAccessToken(refreshToken string, clientId string, clientSecret string, r
 	req.Header.Set("Accept", "application/json")
 	client := &http.Client{}
 	resp, _ := client.Do(req)
+	if resp.StatusCode != 200 {
+		plugin.Logger(ctx).Error("Error: ", resp.Status)
+		return nil, fmt.Errorf("Error: %s", resp.Status)
+	}
 	response := make(map[string]interface{})
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, err
 	}
-	mJson, err := json.Marshal(response)
-	if err != nil {
-		return nil, err
-	}
-	jsonStr := string(mJson)
-	fmt.Println("The JSON data is: ")
-	fmt.Println(jsonStr)
 	return response, nil
 }
 
