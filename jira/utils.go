@@ -98,7 +98,6 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	//    --data '{ "grant_type": "refresh_token", "client_id": "YOUR_CLIENT_ID", "client_secret": "YOUR_CLIENT_SECRET", "refresh_token": "YOUR_REFRESH_TOKEN" }'
 	//
 	//
-	var ttl *time.Duration = nil
 	if authMode == "refresh_token" {
 		refreshTokenFile := "/tmp/.jira.steampipe.7sd7sdjh324.json"
 		oauthConfig := OAuth3LOConfig{
@@ -113,8 +112,7 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 			return nil, fmt.Errorf("Error getting access token: %s", oAuthError.Error())
 		}
 		if tokenTTL != nil {
-			ttl = tokenTTL
-			plugin.Logger(ctx).Debug("Token TTL is for", *ttl)
+			plugin.Logger(ctx).Debug("Token TTL is for", *tokenTTL)
 		}
 		tokenProvider := jirav2.BearerAuthTransport{Token: accessToken}
 		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
