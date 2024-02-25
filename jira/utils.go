@@ -2,10 +2,8 @@ package jira
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -16,43 +14,6 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 )
-
-type RefreshResponse struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-func getStoredRefreshToken(ctx context.Context, jsonFile string) (RefreshResponse, error) {
-	var refreshResponse RefreshResponse
-	file, err := os.Open(jsonFile)
-	if err != nil {
-		plugin.Logger(ctx).Debug("Error opening ", file, " Error:", err)
-		return refreshResponse, err
-	}
-	defer file.Close()
-	decoder := json.NewDecoder(file)
-	plugin.Logger(ctx).Debug("Loading Access token from ", jsonFile)
-	err = decoder.Decode(&refreshResponse)
-	if err != nil {
-		plugin.Logger(ctx).Debug("Could not decode ", file, " Error:", err)
-		return refreshResponse, err
-	}
-	plugin.Logger(ctx).Debug("Response from ", jsonFile, " ", refreshResponse)
-	return refreshResponse, nil
-}
-
-func storeRefreshToken(ctx context.Context, jsonFile string, refreshResponse RefreshResponse) error {
-	file, err := os.Create(jsonFile)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	encoder := json.NewEncoder(file)
-	err = encoder.Encode(refreshResponse)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 
@@ -137,57 +98,27 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	//    --data '{ "grant_type": "refresh_token", "client_id": "YOUR_CLIENT_ID", "client_secret": "YOUR_CLIENT_SECRET", "refresh_token": "YOUR_REFRESH_TOKEN" }'
 	//
 	//
-
-	var accessToken string
-
+	var ttl *time.Duration = nil
 	if authMode == "refresh_token" {
 		refreshTokenFile := "/tmp/.jira.steampipe.7sd7sdjh324.json"
-		plugin.Logger(ctx).Debug("Using Refresh token flow")
-		if at, ok := d.ConnectionManager.Cache.Get("jira_access_token"); ok {
-			accessToken = at.(string)
-			plugin.Logger(ctx).Debug("Using cached access token")
-			tokenProvider := jirav2.BearerAuthTransport{Token: accessToken}
-			client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
-		} else {
-			plugin.Logger(ctx).Debug("Access token not found in cache, fetching new access token using refresh token flow")
-			var refreshToken string
-			if rft, ok := d.ConnectionManager.Cache.Get("jira_refresh_token"); ok {
-				plugin.Logger(ctx).Debug("Using cached refresh token", rft, ok)
-				refreshToken = rft.(string)
-			} else {
-				plugin.Logger(ctx).Debug("Refresh token not found in cache, fetching new refresh token from store or env")
-				refreshResponse, err := getStoredRefreshToken(ctx, refreshTokenFile)
-				if err == nil {
-					plugin.Logger(ctx).Debug("Refresh token from store")
-					refreshToken = refreshResponse.RefreshToken
-				} else {
-					plugin.Logger(ctx).Debug("Refresh token from environment")
-					refreshToken = intialRefreshToken
-				}
-			}
-			response, err := getAccessToken(ctx, refreshToken, clientId, clientSecret, redirectUri)
-			if err != nil {
-				// One more try with the refresh token from the connection config
-				plugin.Logger(ctx).Info("Retrying with refresh token in connection config because of ", err)
-				response, err = getAccessToken(ctx, intialRefreshToken, clientId, clientSecret, redirectUri)
-			}
-			if err != nil {
-				plugin.Logger(ctx).Error("Error getting access token: %s", err)
-				return nil, fmt.Errorf("Error getting access token because of expired/invalid refresh token. : '%s'", err)
-			}
-			accessToken = response["access_token"].(string)
-			//expiry := response["expires_in"].(int)
-			refreshToken = response["refresh_token"].(string)
-			d.ConnectionManager.Cache.SetWithTTL("jira_access_token", accessToken, 3000)
-			d.ConnectionManager.Cache.Set("jira_access_token", refreshToken)
-			plugin.Logger(ctx).Debug("Caching new access token, refresh token")
-			refreshTokenResponse := RefreshResponse{RefreshToken: refreshToken}
-			if err := storeRefreshToken(ctx, refreshTokenFile, refreshTokenResponse); err != nil {
-				return nil, err
-			}
-			tokenProvider := jirav2.BearerAuthTransport{Token: accessToken}
-			client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
+		oauthConfig := OAuth3LOConfig{
+			ClientId:     clientId,
+			ClientSecret: clientSecret,
+			RedirectUri:  redirectUri,
+			RefreshToken: intialRefreshToken,
+			TokenFile:    refreshTokenFile,
 		}
+		accessToken, tokenTTL, oAuthError := getAccessToken(ctx, d, oauthConfig)
+		if oAuthError != nil {
+			return nil, fmt.Errorf("Error getting access token: %s", oAuthError.Error())
+		}
+		if tokenTTL != nil {
+			ttl = tokenTTL
+			plugin.Logger(ctx).Debug("Token TTL is for", *ttl)
+		}
+		tokenProvider := jirav2.BearerAuthTransport{Token: accessToken}
+		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
+
 	} else if personal_access_token != "" {
 		// If the username is empty, let's assume the user is using a PAT
 		tokenProvider := jirav2.BearerAuthTransport{Token: personal_access_token}
@@ -216,32 +147,6 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 const (
 	ColumnDescriptionTitle = "Title of the resource."
 )
-
-func getAccessToken(ctx context.Context, refreshToken string, clientId string, clientSecret string, redirectUri string) (map[string]interface{}, error) {
-	// POST request to get access token and return response in JSON format
-	req, err := http.NewRequest(
-		"POST",
-		"https://auth.atlassian.com/oauth/token",
-		strings.NewReader("grant_type=refresh_token&client_id="+clientId+"&client_secret="+clientSecret+"&refresh_token="+refreshToken+"&redirect_uri="+redirectUri))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-	client := &http.Client{}
-	resp, _ := client.Do(req)
-	if resp.StatusCode != 200 {
-		plugin.Logger(ctx).Error("Error: ", resp.Status)
-		return nil, fmt.Errorf("Error: %s", resp.Status)
-	}
-	response := make(map[string]interface{})
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
-	}
-	return response, nil
-}
 
 //// TRANSFORM FUNCTION
 
