@@ -168,7 +168,6 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 			response, err := getAccessToken(ctx, refreshToken, clientId, clientSecret, redirectUri)
 			if err != nil {
 				// One more try with the refresh token from the connection config
-				plugin.Logger(ctx).Info("Error getting access token with stored config: %s", err)
 				plugin.Logger(ctx).Info("Retrying with refresh token in connection config because of ", err)
 				response, err = getAccessToken(ctx, intialRefreshToken, clientId, clientSecret, redirectUri)
 			}
