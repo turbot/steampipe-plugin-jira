@@ -20,8 +20,10 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	// Load connection from cache, which preserves throttling protection etc
 	cacheKey := "atlassian-jira"
 	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
+		plugin.Logger(ctx).Debug("jira:connect: Fetching client from cache")
 		return cachedData.(*jira.Client), nil
 	}
+	plugin.Logger(ctx).Debug("jira:connect: Creating new client")
 
 	// Default to the env var settings
 	baseUrl := os.Getenv("JIRA_URL")
@@ -98,6 +100,9 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	//    --data '{ "grant_type": "refresh_token", "client_id": "YOUR_CLIENT_ID", "client_secret": "YOUR_CLIENT_SECRET", "refresh_token": "YOUR_REFRESH_TOKEN" }'
 	//
 	//
+
+	var ttl *time.Duration = nil
+	plugin.Logger(ctx).Debug("jira:connect: AuthMode", authMode)
 	if authMode == "refresh_token" {
 		refreshTokenFile := "/tmp/.jira.steampipe.7sd7sdjh324.json"
 		oauthConfig := OAuth3LOConfig{
@@ -112,8 +117,9 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 			return nil, fmt.Errorf("Error getting access token: %s", oAuthError.Error())
 		}
 		if tokenTTL != nil {
-			plugin.Logger(ctx).Debug("Token TTL is for", *tokenTTL)
+			plugin.Logger(ctx).Debug("jira:connect Token TTL is for", *tokenTTL)
 		}
+		ttl = tokenTTL
 		tokenProvider := jirav2.BearerAuthTransport{Token: accessToken}
 		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
 
@@ -135,7 +141,11 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	}
 
 	// Save to cache
-	d.ConnectionManager.Cache.Set(cacheKey, client)
+	if ttl != nil {
+		d.ConnectionManager.Cache.SetWithTTL(cacheKey, client, *ttl)
+	} else {
+		d.ConnectionManager.Cache.Set(cacheKey, client)
+	}
 
 	// Done
 	return client, nil

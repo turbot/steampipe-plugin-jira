@@ -699,7 +699,9 @@ func searchJiraIssues(ctx context.Context, d *plugin.QueryData, options *jira.Se
 	} else {
 		searchResult, res, err = searchWithContext(ctx, d, jql, options)
 	}
-
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchJiraIssues", "search_error", err)
+	}
 	return searchResult, res, err
 }
 
@@ -801,7 +803,9 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 	resp, err := client.Do(req, expressionResult)
 	body, _ := io.ReadAll(resp.Body)
 	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "res_body", string(body))
+
 	if err != nil {
+		plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "res_body", err)
 		return nil, nil, jira.NewJiraError(resp, err)
 	}
 
