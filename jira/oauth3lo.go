@@ -106,7 +106,7 @@ func getRefreshToken(ctx context.Context, d *plugin.QueryData, cfg OAuth3LOConfi
 func getAccessToken(ctx context.Context, d *plugin.QueryData, cfg OAuth3LOConfig) (string, *time.Duration, error) {
 	// Alwayys return a new access token. If caching of access is required then the caller should cache it.
 	plugin.Logger(ctx).Debug("jira:connect:oauth3lo", "Using Refresh token flow")
-	var ttl *time.Duration = nil
+	var ttl *time.Duration
 	var accessToken string
 
 	plugin.Logger(ctx).Debug("jira:connect:oauth3lo", "Access token not found in cache")
