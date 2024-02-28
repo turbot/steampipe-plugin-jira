@@ -104,48 +104,43 @@ func getRefreshToken(ctx context.Context, d *plugin.QueryData, cfg OAuth3LOConfi
 }
 
 func getAccessToken(ctx context.Context, d *plugin.QueryData, cfg OAuth3LOConfig) (string, *time.Duration, error) {
-
-	plugin.Logger(ctx).Debug("Using Refresh token flow")
+	// Alwayys return a new access token. If caching of access is required then the caller should cache it.
+	plugin.Logger(ctx).Debug("jira:connect:oauth3lo", "Using Refresh token flow")
 	var ttl *time.Duration = nil
 	var accessToken string
-	if at, ok := d.ConnectionManager.Cache.Get("jira_access_token"); ok {
-		accessToken = at.(string)
-		plugin.Logger(ctx).Debug("Using cached access token")
-	} else {
-		plugin.Logger(ctx).Debug("Access token not found in cache, fetching new access token using refresh token flow")
-		refreshToken, err := getRefreshToken(ctx, d, cfg)
-		if err != nil {
-			return "", nil, fmt.Errorf("No Refresh Token found. : '%s'", err)
-		}
 
-		response, e := oauthRequest(ctx, refreshToken, cfg)
-		if e != nil {
-			// One more try with the refresh token from the connection config
-			plugin.Logger(ctx).Info("Retrying with refresh token in connection config because of ", e)
-			response, e = oauthRequest(ctx, cfg.RefreshToken, cfg)
-		}
-		if e != nil {
-			plugin.Logger(ctx).Error("Error getting access token: %s", e)
-			return "", nil, fmt.Errorf("Error getting access token because of expired/invalid refresh token. : '%s'", e)
-		}
-		accessToken = response["access_token"].(string)
-		expiry := 3000 * time.Second
-		if response["expires_in"] != nil {
-			expiry = time.Duration(response["expires_in"].(float64)) * time.Second
-			if expiry > 60*time.Second {
-				expiry = expiry - 60*time.Second
-			}
-		}
-		ttl = &expiry
-		refreshToken = response["refresh_token"].(string)
-		plugin.Logger(ctx).Error("Setting Token Expiry time after ", expiry)
-		d.ConnectionManager.Cache.SetWithTTL("jira_access_token", accessToken, expiry)
-		d.ConnectionManager.Cache.Set("jira_access_token", refreshToken)
-		plugin.Logger(ctx).Debug("Caching new access token, refresh token")
-		refreshTokenResponse := RefreshResponse{RefreshToken: refreshToken}
-		if storeError := storeRefreshToken(ctx, cfg.TokenFile, refreshTokenResponse); e != nil {
-			return "", nil, storeError
+	plugin.Logger(ctx).Debug("jira:connect:oauth3lo", "Access token not found in cache")
+	refreshToken, err := getRefreshToken(ctx, d, cfg)
+	if err != nil {
+		return "", nil, fmt.Errorf("No Refresh Token found. : '%s'", err)
+	}
+
+	response, e := oauthRequest(ctx, refreshToken, cfg)
+	if e != nil {
+		// One more try with the refresh token from the connection config
+		plugin.Logger(ctx).Info("jira:connect:oauth3lo", "Retrying with refresh token in connection config because of ", e)
+		response, e = oauthRequest(ctx, cfg.RefreshToken, cfg)
+	}
+	if e != nil {
+		plugin.Logger(ctx).Error("Error getting access token: %s", e)
+		return "", nil, fmt.Errorf("Error getting access token because of expired/invalid refresh token. : '%s'", e)
+	}
+	accessToken = response["access_token"].(string)
+	expiry := 3000 * time.Second
+	if response["expires_in"] != nil {
+		expiry = time.Duration(response["expires_in"].(float64)) * time.Second
+		if expiry > 60*time.Second {
+			expiry = expiry - 60*time.Second
 		}
 	}
+	ttl = &expiry
+	refreshToken = response["refresh_token"].(string)
+	plugin.Logger(ctx).Debug("jira:connect:oauth3lo", "Setting Token Expiry time after ", expiry)
+	plugin.Logger(ctx).Debug("jira:connect:oauth3lo", "Caching new refresh token", "Access token expiry: ", expiry)
+	refreshTokenResponse := RefreshResponse{RefreshToken: refreshToken}
+	if storeError := storeRefreshToken(ctx, cfg.TokenFile, refreshTokenResponse); e != nil {
+		return "", nil, storeError
+	}
+	//}
 	return accessToken, ttl, nil
 }
