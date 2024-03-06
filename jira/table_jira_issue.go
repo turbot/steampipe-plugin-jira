@@ -386,7 +386,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		names := searchResult.Names
 
 		// return error if user requests too much data
-		if searchResult.Total > issueLimit {
+		if queryLimit == nil && searchResult.Total > issueLimit {
 			m := fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit)
 			r, _ := getRowLimitError(ctx, d)
 			if r {
