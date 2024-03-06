@@ -398,7 +398,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 						plugin.Logger(ctx).Error("jira_issue.listIssues", "issue_limit", err)
 						return nil, err
 					}
-					newLimit = newLimit * numLoops
 				}
 			}
 
