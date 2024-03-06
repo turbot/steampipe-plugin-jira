@@ -358,9 +358,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	jql := buildJQLQueryFromQuals(ctx, d.Quals, d.Table.Columns)
 
 	// set options.MaxResults to the smaller of user-defined limit and calculated
-	// maxResults value
+	// maxResults value (capped at 1000)
+	var maxResults int
 	if useExpression {
-		if maxResults, err := calculateMaxResults(ctx, d, jql); err != nil {
+		if maxResults, err = calculateMaxResults(ctx, d, jql); err != nil {
 			return nil, err
 		} else if queryLimit != nil && int(*queryLimit) < maxResults {
 			options.MaxResults = int(*queryLimit)
@@ -386,13 +387,34 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		names := searchResult.Names
 
 		// return error if user requests too much data
-		if queryLimit == nil && searchResult.Total > issueLimit {
-			m := fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit)
-			r, _ := getRowLimitError(ctx, d)
-			if r {
-				return nil, errors.New(m)
-			} else {
-				plugin.Logger(ctx).Debug(m)
+		if searchResult.Total > issueLimit {
+			var newLimit int
+			if queryLimit != nil {
+				if useExpression {
+					newLimit = maxResults * numLoops
+				} else {
+					newLimit, err = getIssueLimit(ctx, d)
+					if err != nil {
+						plugin.Logger(ctx).Error("jira_issue.listIssues", "issue_limit", err)
+						return nil, err
+					}
+					newLimit = newLimit * numLoops
+				}
+			}
+
+			if queryLimit == nil || int(*queryLimit) > newLimit {
+				var m string
+				if queryLimit == nil {
+					m = fmt.Sprintf("Number of results exceeds issue limit(%d>%d). Please make your query more specific.", searchResult.Total, issueLimit)
+				} else if int(*queryLimit) > newLimit {
+					m = fmt.Sprintf("Query limit too high (%d>%d). Please lower the query limit.", int(*queryLimit), newLimit)
+				}
+				r, _ := getRowLimitError(ctx, d)
+				if r {
+					return nil, errors.New(m)
+				} else {
+					plugin.Logger(ctx).Debug(m)
+				}
 			}
 		}
 
@@ -971,10 +993,17 @@ func calculateMaxResults(ctx context.Context, d *plugin.QueryData, jql string) (
 	stepPortion := float64(expressionResult.Meta.Complexity.Steps.Value) / float64(resultAmount)
 	stepMax := float64(expressionResult.Meta.Complexity.Steps.Limit)/stepPortion - stepPortion
 
+	var minToReturn int
 	if primitiveValueMax < stepMax {
-		return int(primitiveValueMax), nil
+		minToReturn = int(primitiveValueMax)
 	} else {
-		return int(stepMax), nil
+		minToReturn = int(stepMax)
+	}
+
+	if minToReturn > 1000 {
+		return 1000, nil
+	} else {
+		return minToReturn, nil
 	}
 }
 
