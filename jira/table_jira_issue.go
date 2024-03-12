@@ -617,6 +617,9 @@ func extractComponentIds(ctx context.Context, d *transform.TransformData) (inter
 		//plugin.Logger(ctx).Debug("extractComponentIds", item)
 		componentIds = append(componentIds, item.ID)
 	}
+	if len(componentIds) == 0 {
+		return nil, nil
+	}
 	return componentIds, nil
 }
 
@@ -624,6 +627,9 @@ func extractComponentNames(ctx context.Context, d *transform.TransformData) (int
 	var componentNames []string
 	for _, item := range d.Value.([]*jira.Component) {
 		componentNames = append(componentNames, item.Name)
+	}
+	if len(componentNames) == 0 {
+		return nil, nil
 	}
 	return strings.Join(componentNames, ","), nil
 }
@@ -650,7 +656,9 @@ func extractSprintIds(ctx context.Context, d *transform.TransformData) (interfac
 			sprintIds = append(sprintIds, fmt.Sprint(sprint["id"]))
 		}
 	}
-
+	if len(sprintIds) == 0 {
+		return nil, nil
+	}
 	return strings.Join(sprintIds, ","), nil
 }
 
@@ -666,7 +674,9 @@ func extractSprintNames(ctx context.Context, d *transform.TransformData) (interf
 			}
 		}
 	}
-
+	if len(sprintNames) == 0 {
+		return nil, nil
+	}
 	return strings.Join(sprintNames, ","), nil
 }
 
@@ -684,7 +694,10 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 
 func getIssueLabels(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	issue := d.HydrateItem.(IssueInfo)
-	return strings.Join(issue.Fields.Labels, ","), nil
+	if issue.Fields != nil && issue.Fields.Labels != nil && len(issue.Fields.Labels) != 0 {
+		return strings.Join(issue.Fields.Labels, ","), nil
+	}
+	return nil, nil
 }
 
 // func getIssueComponents(ctx context.Context, d *transform.TransformData) (interface{}, error) {
@@ -822,12 +835,11 @@ func searchWithExpression(ctx context.Context, d *plugin.QueryData, jql string, 
 
 	expressionResult := new(issueExpressionResult)
 	resp, err := client.Do(req, expressionResult)
-	body, _ := io.ReadAll(resp.Body)
-	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "res_body", string(body))
-
 	if err != nil {
-		plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression", "res_body", err)
-		return nil, nil, jira.NewJiraError(resp, err)
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithExpression", err)
+		body, _ := io.ReadAll(resp.Body)
+		newErr := fmt.Errorf("%s:%s", resp.Status, string(body))
+		return nil, nil, jira.NewJiraError(resp, newErr)
 	}
 
 	// convert expressionResults to jira issues
@@ -979,10 +991,11 @@ func calculateMaxResults(ctx context.Context, d *plugin.QueryData, jql string) (
 
 	expressionResult := new(issueExpressionResult)
 	resp, err := client.Do(req, expressionResult)
-	body, _ := io.ReadAll(resp.Body)
-	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.calculateMaxResults", "res_body", string(body))
 	if err != nil {
-		return 0, jira.NewJiraError(resp, err)
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithExpression.calculateMaxResults", err)
+		body, _ := io.ReadAll(resp.Body)
+		newErr := fmt.Errorf("%s:%s", resp.Status, string(body))
+		return 0, jira.NewJiraError(resp, newErr)
 	}
 
 	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithExpression.calculateMaxResults", "complexity", expressionResult.Meta.Complexity)
@@ -1068,10 +1081,11 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 
 	v := new(searchResult)
 	resp, err := client.Do(req, v)
-	body, _ := io.ReadAll(resp.Body)
-	plugin.Logger(ctx).Debug("jira_issue.listIssues.searchWithContext", "res_body", string(body))
 	if err != nil {
-		err = jira.NewJiraError(resp, err)
+		plugin.Logger(ctx).Error("jira_issue.listIssues.searchWithContext", err)
+		body, _ := io.ReadAll(resp.Body)
+		newErr := fmt.Errorf("%s:%s", resp.Status, string(body))
+		err = jira.NewJiraError(resp, newErr)
 	}
 
 	return v, resp, err
