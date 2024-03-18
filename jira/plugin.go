@@ -37,6 +37,8 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			"jira_sprint":           tableSprint(ctx),
 			"jira_user":             tableUser(ctx),
 			"jira_workflow":         tableWorkflow(ctx),
+			"jira_field":            tableField(ctx),
+			"jira_filter":           tableFilter(ctx),
 		},
 	}
 

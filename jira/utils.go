@@ -34,6 +34,8 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	clientId := os.Getenv("JIRA_CLIENT_ID")
 	clientSecret := os.Getenv("JIRA_CLIENT_SECRET")
 	redirectUri := os.Getenv("OAUTH_REDIRECT_URI")
+	steampipeHome := os.Getenv("STEAMPIPE_HOME")
+
 	var authMode string
 
 	// Prefer config options given in Steampipe
@@ -105,6 +107,9 @@ func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	plugin.Logger(ctx).Debug("jira:connect: AuthMode", authMode)
 	if authMode == "refresh_token" {
 		refreshTokenFile := "/tmp/.jira.steampipe.7sd7sdjh324.json"
+		if steampipeHome != "" {
+			refreshTokenFile = steampipeHome + "config/.jira.refresh.json"
+		}
 		oauthConfig := OAuth3LOConfig{
 			ClientId:     clientId,
 			ClientSecret: clientSecret,
@@ -233,6 +238,23 @@ func buildJQLQueryFromQuals(ctx context.Context, equalQuals plugin.KeyColumnQual
 }
 
 func getRequiredCustomField() map[string]map[string]interface{} {
+	/*
+		cusotmFieldMapFile := "/tmp/customFieldMap.json"
+		jsonFile, err := os.Open(cusotmFieldMapFile)
+		// if we os.Open returns an error then handle it
+		result := make(map[string]map[string]interface{})
+		if err != nil {
+			return result
+		}
+		// defer the closing of our jsonFile so that we can parse it later on
+		defer jsonFile.Close()
+
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+
+		json.Unmarshal([]byte(byteValue), &result)
+
+		return result
+	*/
 	customFieldMap := map[string]map[string]interface{}{
 		"Eng Target Version/s": {
 			"key":        "customfield_13193",
