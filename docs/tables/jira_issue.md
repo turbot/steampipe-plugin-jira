@@ -110,6 +110,7 @@ where
 
 ### List issues due in the next week
 Explore upcoming tasks by identifying issues scheduled for completion within the next week. This can help in prioritizing work and managing team assignments effectively.
+
 ```sql+postgres
 select
   id,
@@ -145,7 +146,8 @@ where
 ```
 
 #### Get linked issue details for the issues
-The query enables deep analysis of linked issues within Jira. Each issue can have multiple links to other issues, which might represent dependencies, blockers, duplicates, or other relationships critical for project management and bug tracking.
+The query enables deep analysis of linked issues within Jira. Each issue can have multiple links to other issues, that might represent dependencies, blockers, duplicates, or other relationships critical for project management and bug tracking.
+
 ```sql+postgres
 select
   ji.id,
