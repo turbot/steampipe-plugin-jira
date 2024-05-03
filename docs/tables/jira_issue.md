@@ -148,51 +148,51 @@ where
 The query enables deep analysis of linked issues within Jira. Each issue can have multiple links to other issues, which might represent dependencies, blockers, duplicates, or other relationships critical for project management and bug tracking.
 ```sql+postgres
 select
-    ji.id,
-    ji.title,
-    ji.project_key,
-    ji.status,
-    il.issue_link_id,
-    il.issue_link_self,
-    il.issue_link_type_name,
-    il.inward_issue_id,
-    il.inward_issue_key,
-    il.inward_issue_status_name,
-    il.inward_issue_summary,
-    il.inward_issue_priority_name
+  ji.id,
+  ji.title,
+  ji.project_key,
+  ji.status,
+  il.issue_link_id,
+  il.issue_link_self,
+  il.issue_link_type_name,
+  il.inward_issue_id,
+  il.inward_issue_key,
+  il.inward_issue_status_name,
+  il.inward_issue_summary,
+  il.inward_issue_priority_name
 from
-    jira_issue ji,
-    lateral jsonb_array_elements(ji.fields -> 'issuelinks') as il_data,
-    lateral (
-        select
-            il_data ->> 'id' as issue_link_id,
-            il_data ->> 'self' as issue_link_self,
-            il_data -> 'type' ->> 'name' as issue_link_type_name,
-            il_data -> 'inwardIssue' ->> 'id' as inward_issue_id,
-            il_data -> 'inwardIssue' ->> 'key' as inward_issue_key,
-            il_data -> 'inwardIssue' -> 'fields' -> 'status' ->> 'name' as inward_issue_status_name,
-            il_data -> 'inwardIssue' -> 'fields' ->> 'summary' as inward_issue_summary,
-            il_data -> 'inwardIssue' -> 'fields' -> 'priority' ->> 'name' as inward_issue_priority_name
-    ) as il;
+  jira_issue ji,
+  lateral jsonb_array_elements(ji.fields -> 'issuelinks') as il_data,
+  lateral (
+    select
+      il_data ->> 'id' as issue_link_id,
+      il_data ->> 'self' as issue_link_self,
+      il_data -> 'type' ->> 'name' as issue_link_type_name,
+      il_data -> 'inwardIssue' ->> 'id' as inward_issue_id,
+      il_data -> 'inwardIssue' ->> 'key' as inward_issue_key,
+      il_data -> 'inwardIssue' -> 'fields' -> 'status' ->> 'name' as inward_issue_status_name,
+      il_data -> 'inwardIssue' -> 'fields' ->> 'summary' as inward_issue_summary,
+      il_data -> 'inwardIssue' -> 'fields' -> 'priority' ->> 'name' as inward_issue_priority_name
+  ) as il;
 ```
 
 ```sql+sqlite
 select
-    ji.id,
-    ji.title,
-    ji.project_key,
-    ji.status,
-    json_extract(il_data.value, '$.id') as issue_link_id,
-    json_extract(il_data.value, '$.self') as issue_link_self,
-    json_extract(il_data.value, '$.type.name') as issue_link_type_name,
-    json_extract(il_data.value, '$.inwardIssue.id') as inward_issue_id,
-    json_extract(il_data.value, '$.inwardIssue.key') as inward_issue_key,
-    json_extract(il_data.value, '$.inwardIssue.fields.status.name') as inward_issue_status_name,
-    json_extract(il_data.value, '$.inwardIssue.fields.summary') as inward_issue_summary,
-    json_extract(il_data.value, '$.inwardIssue.fields.priority.name') as inward_issue_priority_name
+  ji.id,
+  ji.title,
+  ji.project_key,
+  ji.status,
+  json_extract(il_data.value, '$.id') as issue_link_id,
+  json_extract(il_data.value, '$.self') as issue_link_self,
+  json_extract(il_data.value, '$.type.name') as issue_link_type_name,
+  json_extract(il_data.value, '$.inwardIssue.id') as inward_issue_id,
+  json_extract(il_data.value, '$.inwardIssue.key') as inward_issue_key,
+  json_extract(il_data.value, '$.inwardIssue.fields.status.name') as inward_issue_status_name,
+  json_extract(il_data.value, '$.inwardIssue.fields.summary') as inward_issue_summary,
+  json_extract(il_data.value, '$.inwardIssue.fields.priority.name') as inward_issue_priority_name
 from
-    jira_issue ji,
-    json_each(json_extract(ji.fields, '$.issuelinks')) as il_data;
+ jira_issue ji,
+ json_each(json_extract(ji.fields, '$.issuelinks')) as il_data;
 ```
 
 
