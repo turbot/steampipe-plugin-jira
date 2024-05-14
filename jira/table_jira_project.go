@@ -30,7 +30,7 @@ func tableProject(_ context.Context) *plugin.Table {
 				{Name: "project_type_key", Require: plugin.Optional},
 			},
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "id",
 				Description: "The ID of the project.",
@@ -127,7 +127,7 @@ func tableProject(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 

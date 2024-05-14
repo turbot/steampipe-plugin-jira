@@ -25,7 +25,7 @@ func tableDashboard(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listDashboards,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "id",
 				Description: "The ID of the dashboard.",
@@ -91,7 +91,7 @@ func tableDashboard(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 

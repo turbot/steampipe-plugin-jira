@@ -25,7 +25,7 @@ func tableWorkflow(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listWorkflows,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "name",
 				Description: "The name of the workflow.",
@@ -68,7 +68,7 @@ func tableWorkflow(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("ID.Name"),
 			},
-		},
+		}),
 	}
 }
 

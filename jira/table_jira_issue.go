@@ -47,7 +47,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				{Name: "updated", Require: plugin.Optional, Operators: []string{"=", ">", ">=", "<=", "<"}},
 			},
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			// top fields
 			{
 				Name:        "id",
@@ -233,7 +233,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Key"),
 			},
-		},
+		}),
 	}
 }
 

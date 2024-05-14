@@ -24,7 +24,7 @@ func tableEpic(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listEpics,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "id",
 				Description: "The id of the epic.",
@@ -68,7 +68,7 @@ func tableEpic(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 

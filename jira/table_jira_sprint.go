@@ -28,7 +28,7 @@ func tableSprint(_ context.Context) *plugin.Table {
 			ParentHydrate: listBoards,
 			Hydrate:       listSprints,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "id",
 				Description: "The ID of the sprint.",
@@ -81,7 +81,7 @@ func tableSprint(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 

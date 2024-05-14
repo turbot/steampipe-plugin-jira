@@ -25,7 +25,7 @@ func tablePriority(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listPriorities,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "name",
 				Description: "The name of the issue priority.",
@@ -66,7 +66,7 @@ func tablePriority(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 

@@ -18,7 +18,7 @@ func tableGlobalSetting(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listGlobalSettings,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			// top fields
 			{
 				Name:        "voting_enabled",
@@ -62,7 +62,7 @@ func tableGlobalSetting(_ context.Context) *plugin.Table {
 				Description: "The configuration of time tracking.",
 				Type:        proto.ColumnType_JSON,
 			},
-		},
+		}),
 	}
 }
 

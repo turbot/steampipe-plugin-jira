@@ -22,7 +22,7 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 			ParentHydrate: listBoards,
 			Hydrate:       listBacklogIssues,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			// top fields
 			{
 				Name:        "id",
@@ -195,7 +195,7 @@ func tableBacklogIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Key"),
 			},
-		},
+		}),
 	}
 }
 

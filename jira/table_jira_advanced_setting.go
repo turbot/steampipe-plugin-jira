@@ -24,7 +24,7 @@ func tableAdvancedSetting(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listAdvancedSettings,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			// top fields
 			{
 				Name:        "id",
@@ -75,7 +75,7 @@ func tableAdvancedSetting(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 
