@@ -28,7 +28,7 @@ func tableUser(_ context.Context) *plugin.Table {
 				MaxConcurrency: 50,
 			},
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "display_name",
 				Description: "The display name of the user. Depending on the user's privacy setting, this may return an alternative value.",
@@ -81,7 +81,7 @@ func tableUser(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("DisplayName"),
 			},
-		},
+		}),
 	}
 }
 

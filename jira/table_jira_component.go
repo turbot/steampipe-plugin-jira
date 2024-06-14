@@ -26,7 +26,7 @@ func tableComponent(_ context.Context) *plugin.Table {
 			ParentHydrate: listProjects,
 			Hydrate:       listComponents,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			// top fields
 			{
 				Name:        "id",
@@ -124,7 +124,7 @@ func tableComponent(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 

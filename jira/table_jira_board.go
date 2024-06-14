@@ -24,7 +24,7 @@ func tableBoard(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listBoards,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "id",
 				Description: "The ID of the board.",
@@ -68,7 +68,7 @@ func tableBoard(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 

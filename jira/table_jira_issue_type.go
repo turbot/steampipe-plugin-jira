@@ -24,7 +24,7 @@ func tableIssueType(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listIssueTypes,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			// top fields
 			{
 				Name:        "id",
@@ -92,7 +92,7 @@ func tableIssueType(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 

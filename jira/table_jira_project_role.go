@@ -24,7 +24,7 @@ func tableProjectRole(_ context.Context) *plugin.Table {
 		List: &plugin.ListConfig{
 			Hydrate: listProjectRoles,
 		},
-		Columns: []*plugin.Column{
+		Columns: commonColumns([]*plugin.Column{
 			{
 				Name:        "id",
 				Description: "The ID of the project role.",
@@ -66,7 +66,7 @@ func tableProjectRole(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_STRING,
 				Transform:   transform.FromField("Name"),
 			},
-		},
+		}),
 	}
 }
 
