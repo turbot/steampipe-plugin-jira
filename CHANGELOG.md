@@ -1,3 +1,19 @@
+## v0.15.0 [2024-06-15]
+
+_Enhancements_
+
+- The `login_id` column has now been assigned as a connection key column across all the tables which facilitates more precise and efficient querying across multiple Jira connections. ([#119](https://github.com/turbot/steampipe-plugin-jira/pull/119))
+- The Plugin and the Steampipe Anywhere binaries are now built with the `netgo` package. ([#128](https://github.com/turbot/steampipe-plugin-jira/pull/128))
+- Added the `version` flag to the plugin's Export tool. ([#65](https://github.com/turbot/steampipe-export/pull/65))
+
+_Bug fixes_
+
+- Fixed pagination in the `jira_board` table to correctly return all the data instead of partial results. ([#127](https://github.com/turbot/steampipe-plugin-jira/pull/127))
+
+_Dependencies_
+
+- Recompiled plugin with [steampipe-plugin-sdk v5.10.1](https://github.com/turbot/steampipe-plugin-sdk/blob/main/CHANGELOG.md#v5100-2024-04-10) that adds support for connection key columns. ([#119](https://github.com/turbot/steampipe-plugin-jira/pull/119))
+
 ## v0.14.0 [2023-12-12]
 
 _What's new?_
