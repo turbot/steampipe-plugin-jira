@@ -7,7 +7,7 @@ toolchain go1.21.1
 require (
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/andygrunwald/go-jira/v2 v2.0.0-20230325080157-2e11dffbdb9a
-	github.com/turbot/steampipe-plugin-sdk/v5 v5.10.1
+	github.com/turbot/steampipe-plugin-sdk/v5 v5.10.2
 )
 
 require (
