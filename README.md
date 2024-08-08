@@ -25,7 +25,7 @@ Configure your account details in `~/.steampipe/config/jira.spc`:
 
 ```hcl
 connection "jira" {
-  plugin = jira
+  plugin = "jira"
 
   # Authentication information
   base_url              = "https://your-domain.atlassian.net/"
