@@ -117,7 +117,6 @@ type commentWithIssueDetails struct {
 
 func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
 	if h.Item == nil {
-		plugin.Logger(ctx).Error("Parent Hydrate is nii ===>>", true)
 		return nil, nil
 	}
 	issueinfo := h.Item.(IssueInfo)
