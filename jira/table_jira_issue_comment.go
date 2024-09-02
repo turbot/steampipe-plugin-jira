@@ -18,7 +18,7 @@ func tableIssueComment(_ context.Context) *plugin.Table {
 		Name:        "jira_issue_comment",
 		Description: "Comments that provided in issue.",
 		Get: &plugin.GetConfig{
-			KeyColumns: plugin.AnyColumn([]string{"issue_id", "id"}),
+			KeyColumns: plugin.AllColumns([]string{"issue_id", "id"}),
 			Hydrate:    getIssueComment,
 		},
 		List: &plugin.ListConfig{
@@ -117,6 +117,7 @@ type commentWithIssueDetails struct {
 
 func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
 	if h.Item == nil {
+		plugin.Logger(ctx).Error("Parent Hydrate is nii ===>>", true)
 		return nil, nil
 	}
 	issueinfo := h.Item.(IssueInfo)
