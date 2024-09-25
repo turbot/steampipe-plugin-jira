@@ -18,7 +18,7 @@ func tableIssueComment(_ context.Context) *plugin.Table {
 		Name:        "jira_issue_comment",
 		Description: "Comments that provided in issue.",
 		Get: &plugin.GetConfig{
-			KeyColumns: plugin.AnyColumn([]string{"issue_id", "id"}),
+			KeyColumns: plugin.AllColumns([]string{"issue_id", "id"}),
 			Hydrate:    getIssueComment,
 		},
 		List: &plugin.ListConfig{

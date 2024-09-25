@@ -258,8 +258,15 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		Expand:     "names",
 	}
 
-	jql := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
-	plugin.Logger(ctx).Debug("jira_issue.listIssues", "JQL", jql)
+	jql := ""
+
+	// The "jira_issue_comment" table is a child of the "jira_issue" table. When querying the child table, the parent table is executed first.
+	// This restriction is necessary to correctly build the input parameters when querying only the "jira_issue" table.
+	// Without this check, a query like "select title, id, issue_id, body from jira_issue_comment where issue_id = '10015'" will fail with an error.
+	// Error: jira: request failed. Please analyze the request body for more details. Status code: 400: could not parse JSON: unexpected end of JSON input
+	if d.Table.Name == "jira_issue" {
+		jql = buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
+	}
 
 	for {
 		searchResult, res, err := searchWithContext(ctx, d, jql, &options)
