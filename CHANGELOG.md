@@ -1,3 +1,15 @@
+## v0.16.0 [2024-09-27]
+
+_Bug fixes_
+
+- Fixed pagination in `jira_issue` table. ([#133](https://github.com/turbot/steampipe-plugin-jira/pull/133))
+- Fixed `jira_issue` and `jira_issue_comment` tables to correctly return data instead of an empty row when key quals are passed in the `where` clause. ([#138](https://github.com/turbot/steampipe-plugin-jira/pull/138))
+
+_Dependencies_
+
+- Recompiled plugin with Go version `1.22`. ([#135](https://github.com/turbot/steampipe-plugin-jira/pull/135))
+- Recompiled plugin with [steampipe-plugin-sdk v5.10.4](https://github.com/turbot/steampipe-plugin-sdk/blob/develop/CHANGELOG.md#v5104-2024-08-29) that fixes logging in the plugin export tool. ([#135](https://github.com/turbot/steampipe-plugin-jira/pull/135))
+
 ## v0.15.0 [2024-06-15]
 
 _Enhancements_
