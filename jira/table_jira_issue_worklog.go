@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -18,11 +19,11 @@ func tableIssueWorklog(_ context.Context) *plugin.Table {
 		Name:        "jira_issue_worklog",
 		Description: "Jira worklog is a feature within the Jira software that allows users to record the amount of time they have spent working on various tasks or issues.",
 		Get: &plugin.GetConfig{
-			KeyColumns: plugin.AnyColumn([]string{"issue_id", "id"}),
+			KeyColumns: plugin.AllColumns([]string{"issue_id", "id"}),
 			Hydrate:    getIssueWorklog,
 		},
 		List: &plugin.ListConfig{
-			ParentHydrate: listIssues,
+			ParentHydrate: listIssuesForIssueChildren,
 			Hydrate:       listIssueWorklogs,
 			KeyColumns: plugin.KeyColumnSlice{
 				{Name: "issue_id", Require: plugin.Optional},
@@ -155,6 +156,10 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		w := new(jira.Worklog)
 		_, err = client.Do(req, w)
 		if err != nil {
+			if strings.Contains(err.Error(), "404") { // Handle not found error code
+				return nil, nil
+			}
+
 			plugin.Logger(ctx).Error("jira_issue_worklog.listIssueWorklogs", "api_error", err)
 			return nil, err
 		}
