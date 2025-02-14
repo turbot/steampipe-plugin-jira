@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -22,7 +23,7 @@ func tableIssueComment(_ context.Context) *plugin.Table {
 			Hydrate:    getIssueComment,
 		},
 		List: &plugin.ListConfig{
-			ParentHydrate: listIssues,
+			ParentHydrate: listIssuesForIssueComment,
 			Hydrate:       listIssueComments,
 			KeyColumns: plugin.KeyColumnSlice{
 				{Name: "issue_id", Require: plugin.Optional},
@@ -157,6 +158,9 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		comments := new(CommentResult)
 		_, err = client.Do(req, comments)
 		if err != nil {
+			if strings.Contains(err.Error(), "404") { // Handle not found error code
+				return nil, nil
+			}
 			plugin.Logger(ctx).Error("jira_issue_comment.listIssueComments", "api_error", err)
 			return nil, err
 		}
@@ -214,3 +218,29 @@ func getIssueComment(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrate
 
 	return commentWithIssueDetails{*res, issueId}, nil
 }
+
+//// PARENT HYDRATE
+
+// The Steampipe SDK is yet to support making API calls conditionally based on query parameters.
+// For example, when running the query "SELECT * FROM jira_issue_comment WHERE issue_id = '10037';" 
+// we should avoid making an API call to fetch all issues because issue_id is provided in the query parameter, even though jira_issue is the parent of jira_issue_comment.
+// However, for a query like "SELECT * FROM jira_issue_comment", we should first retrieve all issues 
+// and then fetch the comments for each issue.
+func listIssuesForIssueComment(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	issueId := d.EqualsQualString("issue_id")
+
+	if issueId != "" {
+		item := IssueInfo{
+			Issue: jira.Issue{
+				ID: issueId,
+			},
+		}
+
+		d.StreamListItem(ctx, item)
+		
+		return nil, nil
+	}
+	
+	return listIssues(ctx, d, h)
+}
+
