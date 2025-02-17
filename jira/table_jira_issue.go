@@ -221,7 +221,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 			},
 			{
 				Name:        "changelog",
-				Description: "Json object containing changelog of the issue.",
+				Description: "JSON object containing changelog of the issue.",
 				Type:        proto.ColumnType_JSON,
 			},
 			{
