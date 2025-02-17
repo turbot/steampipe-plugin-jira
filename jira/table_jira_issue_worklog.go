@@ -3,6 +3,8 @@ package jira
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"time"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -18,14 +20,14 @@ func tableIssueWorklog(_ context.Context) *plugin.Table {
 		Name:        "jira_issue_worklog",
 		Description: "Jira worklog is a feature within the Jira software that allows users to record the amount of time they have spent working on various tasks or issues.",
 		Get: &plugin.GetConfig{
-			KeyColumns: plugin.AnyColumn([]string{"issue_id", "id"}),
+			KeyColumns: plugin.AllColumns([]string{"issue_id", "id"}),
 			Hydrate:    getIssueWorklog,
 		},
 		List: &plugin.ListConfig{
-			ParentHydrate: listIssues,
-			Hydrate:       listIssueWorklogs,
+			Hydrate: listWorklogs,
 			KeyColumns: plugin.KeyColumnSlice{
 				{Name: "issue_id", Require: plugin.Optional},
+				{Name: "updated", Require: plugin.Optional, Operators: []string{">", ">="}},
 			},
 		},
 		Columns: commonColumns([]*plugin.Column{
@@ -113,15 +115,20 @@ type WorklogDetails struct {
 
 //// LIST FUNCTION
 
-func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	if h.Item == nil {
-		return nil, nil
+func listWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	if d.EqualsQualString("issue_id") != "" {
+		return listIssueWorklogs(ctx, d, h)
 	}
-	issueinfo := h.Item.(IssueInfo)
+
+	// Fetch worklogs by updated time. Falls back to updated > 0 in
+	// cases where update filter is not provided (all worklogs)
+	return listWorklogsByUpdated(ctx, d, h)
+}
+
+func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	issueId := d.EqualsQualString("issue_id")
 
-	// Minize the API call for given issue ID.
-	if issueId != "" && issueId != issueinfo.ID {
+	if issueId == "" {
 		return nil, nil
 	}
 
@@ -144,7 +151,7 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 	}
 
 	for {
-		apiEndpoint := fmt.Sprintf("rest/api/2/issue/%s/worklog?startAt=%d&maxResults=%d&expand=properties", issueinfo.ID, last, limit)
+		apiEndpoint := fmt.Sprintf("rest/api/2/issue/%s/worklog?startAt=%d&maxResults=%d&expand=properties", issueId, last, limit)
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
@@ -155,12 +162,16 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		w := new(jira.Worklog)
 		_, err = client.Do(req, w)
 		if err != nil {
+			if isNotFoundError(err) { // Handle not found error code
+				return nil, nil
+			}
+
 			plugin.Logger(ctx).Error("jira_issue_worklog.listIssueWorklogs", "api_error", err)
 			return nil, err
 		}
 
 		for _, c := range w.Worklogs {
-			d.StreamListItem(ctx, WorklogDetails{c, issueinfo.ID})
+			d.StreamListItem(ctx, WorklogDetails{c, issueId})
 
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
@@ -173,6 +184,129 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 			return nil, nil
 		}
 	}
+}
+
+type ChangedWorklogs struct {
+	LastPage bool            `json:"lastPage" structs:"lastPage"`
+	NextPage *string         `json:"nextPage" structs:"nextPage"`
+	Values   []ChangeWorklog `json:"values" structs:"values"`
+}
+
+type ChangeWorklog struct {
+	WorklogId int64 `json:"WorklogId,omitempty" structs:"WorklogId,omitempty"`
+}
+
+func listWorklogsByUpdated(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
+	since := time.Time{}
+
+	if d.Quals["updated"] != nil {
+		for _, q := range d.Quals["updated"].Quals {
+			switch q.Operator {
+			case ">":
+				since = q.Value.GetTimestampValue().AsTime().Add(time.Millisecond * 1)
+			case ">=":
+				since = q.Value.GetTimestampValue().AsTime()
+			}
+		}
+	}
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue_worklog.listWorklogsByUpdated", "connection_error", err)
+		return nil, err
+	}
+
+	nextPageUrl := fmt.Sprintf("rest/api/2/worklog/updated?since=%d&expand=properties", since.UnixMilli())
+
+	for {
+		req, err := client.NewRequest("GET", nextPageUrl, nil)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_issue_worklog.listWorklogsByUpdated", "get_request_error", err)
+			return nil, err
+		}
+
+		w := new(ChangedWorklogs)
+		_, err = client.Do(req, w)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_issue_worklog.listWorklogsByUpdated", "api_error", err)
+			return nil, err
+		}
+
+		worklogIds := []int64{}
+		for _, v := range w.Values {
+			worklogIds = append(worklogIds, v.WorklogId)
+		}
+
+		// no need to worry about pagination in batchGetWorklog
+		// since it accepts same number of worklogs per page as this method
+		_, err = batchGetWorklog(ctx, worklogIds, d)
+		if err != nil {
+			return nil, err
+		}
+
+		if w.LastPage {
+			return nil, nil
+		}
+
+		if d.RowsRemaining(ctx) == 0 {
+			return nil, nil
+		}
+
+		if w.NextPage != nil {
+			nextPageUrl = *w.NextPage
+			// Extract the path from the full URL using the url package
+			parsedUrl, err := url.Parse(nextPageUrl)
+			if err != nil {
+				return nil, err
+			}
+			nextPageUrl = parsedUrl.Path + "?" + parsedUrl.RawQuery
+		}
+	}
+}
+
+func batchGetWorklog(ctx context.Context, ids []int64, d *plugin.QueryData) (interface{}, error) {
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue_worklog.batchGetWorklog", "connection_error", err)
+		return nil, err
+	}
+
+	apiEndpoint := "rest/api/2/worklog/list?expand=properties"
+
+	body := struct {
+		Ids []int64 `json:"ids"`
+	}{
+		Ids: ids,
+	}
+
+	req, err := client.NewRequest("POST", apiEndpoint, body)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue_worklog.batchGetWorklog", "get_request_error", err)
+		return nil, err
+	}
+
+	w := make([]jira.WorklogRecord, 0)
+	_, err = client.Do(req, &w)
+
+	if err != nil {
+		if isNotFoundError(err) { // Handle not found error code
+			return nil, nil
+		}
+
+		plugin.Logger(ctx).Error("jira_issue_worklog.batchGetWorklog", "api_error", err)
+		return nil, err
+	}
+
+	for _, c := range w {
+		d.StreamListItem(ctx, WorklogDetails{c, c.IssueID})
+
+		// Context may get cancelled due to manual cancellation or if the limit has been reached
+		if d.RowsRemaining(ctx) == 0 {
+			return nil, nil
+		}
+	}
+
+	return nil, nil
 }
 
 //// HYDRATE FUNCTION
