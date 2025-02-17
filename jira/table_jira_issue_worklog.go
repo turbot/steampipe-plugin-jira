@@ -3,7 +3,6 @@ package jira
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -156,7 +155,7 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		w := new(jira.Worklog)
 		_, err = client.Do(req, w)
 		if err != nil {
-			if strings.Contains(err.Error(), "404") { // Handle not found error code
+			if isNotFoundError(err) { // Handle not found error code
 				return nil, nil
 			}
 

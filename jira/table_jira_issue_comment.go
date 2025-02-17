@@ -3,7 +3,6 @@ package jira
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -158,7 +157,7 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		comments := new(CommentResult)
 		_, err = client.Do(req, comments)
 		if err != nil {
-			if strings.Contains(err.Error(), "404") { // Handle not found error code
+			if isNotFoundError(err) { // Handle not found error code
 				return nil, nil
 			}
 			plugin.Logger(ctx).Error("jira_issue_comment.listIssueComments", "api_error", err)
