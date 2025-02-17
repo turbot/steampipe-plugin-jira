@@ -220,6 +220,11 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Type:        proto.ColumnType_JSON,
 			},
 			{
+				Name:        "changelog",
+				Description: "Json object containing changelog of the issue.",
+				Type:        proto.ColumnType_JSON,
+			},
+			{
 				Name:        "tags",
 				Type:        proto.ColumnType_JSON,
 				Description: "A map of label names associated with this issue, in Steampipe standard format.",
@@ -255,7 +260,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 	options := jira.SearchOptions{
 		StartAt:    0,
 		MaxResults: limit,
-		Expand:     "names",
+		Expand:     "names,changelog",
 	}
 
 	jql := ""
@@ -335,7 +340,7 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 	}
 
 	issue, res, err := client.Issue.Get(id, &jira.GetQueryOptions{
-		Expand: "names",
+		Expand: "names,changelog",
 	})
 	body, _ := io.ReadAll(res.Body)
 	plugin.Logger(ctx).Debug("jira_issue.getIssue", "res_body", string(body))
