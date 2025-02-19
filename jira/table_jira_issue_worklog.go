@@ -257,6 +257,7 @@ func listWorklogsByUpdated(ctx context.Context, d *plugin.QueryData, _ *plugin.H
 			// Extract the path from the full URL using the url package
 			parsedUrl, err := url.Parse(nextPageUrl)
 			if err != nil {
+				plugin.Logger(ctx).Error("jira_issue_worklog.listWorklogsByUpdated", "parsing_error", err)
 				return nil, err
 			}
 			nextPageUrl = parsedUrl.Path + "?" + parsedUrl.RawQuery
