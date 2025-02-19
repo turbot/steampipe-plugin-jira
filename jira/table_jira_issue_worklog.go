@@ -238,7 +238,8 @@ func listWorklogsByUpdated(ctx context.Context, d *plugin.QueryData, _ *plugin.H
 		}
 
 		// no need to worry about pagination in batchGetWorklog
-		// since it accepts same number of worklogs per page as this method
+		// since it accepts same number of worklogs per page (1000)
+		// as this method returns at maximum (also 1000)
 		_, err = batchGetWorklog(ctx, worklogIds, d)
 		if err != nil {
 			return nil, err
