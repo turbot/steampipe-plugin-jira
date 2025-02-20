@@ -161,5 +161,13 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 }
 
 func getIssueJQLKey(columnName string) string {
+	remappedColumns := map[string]string{
+		"resolution_date": "resolutiondate",
+		"status_category": "statuscategory",
+	}
+
+	if val, ok := remappedColumns[columnName]; ok {
+		return val
+	}
 	return strings.ToLower(strings.Split(columnName, "_")[0])
 }
