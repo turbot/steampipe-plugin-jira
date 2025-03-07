@@ -1,3 +1,20 @@
+## v1.1.0 [2025-03-07]
+
+_Enhancements_
+
+- Added `changelog` column to `jira_issue` table. ([#149](https://github.com/turbot/steampipe-plugin-jira/pull/149)) (Thanks [@mariusgrigaitis](https://github.com/mariusgrigaitis) for the contribution!)
+- Added `updated` column as an optional qual to the `jira_issue_worklog` table. ([#151](https://github.com/turbot/steampipe-plugin-jira/pull/151)) (Thanks [@mariusgrigaitis](https://github.com/mariusgrigaitis) for the contribution!) 
+- Optimized the `jira_issue_comment` table to avoid unnecessary API calls when `issue_id` is passed in as an optional qual when querying the table. ([#143](https://github.com/turbot/steampipe-plugin-jira/pull/143))
+
+_Bug fixes_
+
+- Fixed the `jira_issue` table to correctly return data instead of an error when `resolution_date` and `status` columns are passed in as the query parameters. ([#152](https://github.com/turbot/steampipe-plugin-jira/pull/152)) (Thanks [@mariusgrigaitis](https://github.com/mariusgrigaitis) for the contribution!)
+
+_Dependencies_
+
+- Recompiled plugin with Go version `1.23.1`. ([#154](https://github.com/turbot/steampipe-plugin-jira/pull/154))
+- Recompiled plugin with [steampipe-plugin-sdk v5.11.3](https://github.com/turbot/steampipe-plugin-sdk/blob/develop/CHANGELOG.md#v5113-2025-02-11) that addresses critical and high vulnerabilities in dependent packages. ([#154](https://github.com/turbot/steampipe-plugin-jira/pull/154))
+
 ## v1.0.0 [2024-10-22]
 
 There are no significant changes in this plugin version; it has been released to align with [Steampipe's v1.0.0](https://steampipe.io/changelog/steampipe-cli-v1-0-0) release. This plugin adheres to [semantic versioning](https://semver.org/#semantic-versioning-specification-semver), ensuring backward compatibility within each major version.
