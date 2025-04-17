@@ -1,3 +1,9 @@
+## v1.2.0 [2025-04-17]
+
+_Dependencies_
+
+- Recompiled plugin with [steampipe-plugin-sdk v5.11.5](https://github.com/turbot/steampipe-plugin-sdk/blob/v5.11.5/CHANGELOG.md#v5115-2025-03-31). ([#160](https://github.com/turbot/steampipe-plugin-jira/pull/160))
+
 ## v1.1.0 [2025-03-07]
 
 _Enhancements_
