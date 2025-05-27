@@ -280,7 +280,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
     }
 
     maxWorkers := getMaxWorkers(ctx, d)
-    plugin.Logger(ctx).Warn("getMaxWorkers", "found_workers", maxWorkers)
 
     sem := make(chan struct{}, maxWorkers)
     var wg sync.WaitGroup
