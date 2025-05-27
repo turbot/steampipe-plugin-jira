@@ -5,13 +5,13 @@ import (
 	"io"
 	"net/url"
 	"strconv"
-    "sync"
 	"strings"
-	
+	"sync"
+
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 )
 
 //// TABLE DEFINITION
@@ -246,97 +246,98 @@ func tableIssue(_ context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-    const pageSize = 100
+	const pageSize = 100
 
-    jql := ""
-    if d.Table.Name == "jira_issue" {
-        jql = buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
-    }
+	jql := ""
+	if d.Table.Name == "jira_issue" {
+		jql = buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
+	}
 
-    // Prima richiesta solo per sapere quanti totali ci sono, senza Expand
-    initialOptions := jira.SearchOptions{
-        StartAt:    0,
-        MaxResults: 1,
-        Expand:     "", // <-- Ottimizzazione payload qui
-    }
+	// Prima richiesta solo per sapere quanti totali ci sono, senza Expand
+	initialOptions := jira.SearchOptions{
+		StartAt:    0,
+		MaxResults: 1,
+		Expand:     "", // <-- Ottimizzazione payload qui
+	}
 
-    initialResult, _, err := searchWithContext(ctx, d, jql, &initialOptions)
-    if err != nil {
-        plugin.Logger(ctx).Error("jira_issue.listIssues", "initial_search_error", err)
-        return nil, err
-    }
+	initialResult, _, err := searchWithContext(ctx, d, jql, &initialOptions)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues", "initial_search_error", err)
+		return nil, err
+	}
 
-    total := initialResult.Total
-    names := initialResult.Names
+	total := initialResult.Total
+	names := initialResult.Names
 
-    if total == 0 {
-        return nil, nil
-    }
+	if total == 0 {
+		return nil, nil
+	}
 
-    // Calcola gli startAt delle pagine
-    var starts []int
-    for i := 0; i < total; i += pageSize {
-        starts = append(starts, i)
-    }
+	// Calcola gli startAt delle pagine
+	var starts []int
+	for i := 0; i < total; i += pageSize {
+		starts = append(starts, i)
+	}
 
-    maxWorkers := getMaxWorkers(ctx, d)
+  maxWorkers := getMaxWorkers(ctx, d)
 
-    sem := make(chan struct{}, maxWorkers)
-    var wg sync.WaitGroup
-    var fetchErr error
-    var mu sync.Mutex
+	sem := make(chan struct{}, maxWorkers)
+	var wg sync.WaitGroup
+	var fetchErr error
+	var mu sync.Mutex
 
-    for _, start := range starts {
-        if d.RowsRemaining(ctx) == 0 {
-            break
-        }
+	for _, start := range starts {
+		if d.RowsRemaining(ctx) == 0 {
+			break
+		}
 
-        sem <- struct{}{}
-        wg.Add(1)
+		sem <- struct{}{}
+		wg.Add(1)
 
-        go func(startAt int) {
-            defer wg.Done()
-            defer func() { <-sem }()
+		go func(startAt int) {
+			defer wg.Done()
+			defer func() { <-sem }()
 
-            options := jira.SearchOptions{
-                StartAt:    startAt,
-                MaxResults: pageSize,
-                Expand:     "names", // OK tenere espansione qui per batch di record
-            }
+			options := jira.SearchOptions{
+				StartAt:    startAt,
+				MaxResults: pageSize,
+				Expand:     "names", // OK tenere espansione qui per batch di record
+			}
 
-            res, _, err := searchWithContext(ctx, d, jql, &options)
-            if err != nil {
-                plugin.Logger(ctx).Error("jira_issue.listIssues", "page_search_error", err)
-                mu.Lock()
-                if fetchErr == nil {
-                    fetchErr = err
-                }
-                mu.Unlock()
-                return
-            }
+			res, _, err := searchWithContext(ctx, d, jql, &options)
+			if err != nil {
+				plugin.Logger(ctx).Error("jira_issue.listIssues", "page_search_error", err)
+				mu.Lock()
+				if fetchErr == nil {
+					fetchErr = err
+				}
+				mu.Unlock()
+				return
+			}
 
-            for _, issue := range res.Issues {
-                keys := map[string]string{
-                    "epic":   getFieldKey(ctx, d, names, "Epic Link"),
-                    "sprint": getFieldKey(ctx, d, names, "Sprint"),
-                }
-                d.StreamListItem(ctx, IssueInfo{issue, keys})
+			for _, issue := range res.Issues {
+				keys := map[string]string{
+					"epic":   getFieldKey(ctx, d, names, "Epic Link"),
+					"sprint": getFieldKey(ctx, d, names, "Sprint"),
+				}
+				d.StreamListItem(ctx, IssueInfo{issue, keys})
 
-                if d.RowsRemaining(ctx) == 0 {
-                    break
-                }
-            }
-        }(start)
-    }
+				if d.RowsRemaining(ctx) == 0 {
+					break
+				}
+			}
+		}(start)
+	}
 
-    wg.Wait()
+	wg.Wait()
 
-    if fetchErr != nil {
-        return nil, fetchErr
-    }
+	if fetchErr != nil {
+		return nil, fetchErr
+	}
 
-    return nil, nil
+	return nil, nil
 }
+
 //// HYDRATE FUNCTION
 
 func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
@@ -517,6 +518,7 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 	}
 	return v, resp, err
 }
+
 //// Required Structs
 
 type ListIssuesResult struct {

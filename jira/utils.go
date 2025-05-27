@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-
 	"github.com/andygrunwald/go-jira"
 	jirav2 "github.com/andygrunwald/go-jira/v2/onpremise"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -80,7 +79,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	return client, nil
 }
 
-//// Constants
+// // Constants
 const (
 	ColumnDescriptionTitle = "Title of the resource."
 )
@@ -195,7 +194,7 @@ func getMaxWorkers(ctx context.Context, d *plugin.QueryData) int {
 //// DYNAMIC FIELDS BUILDER
 
 func getRequestedFields(ctx context.Context, d *plugin.QueryData) []string {
-	if d.QueryContext.Columns == nil || len(d.QueryContext.Columns) == 0 {
+	if len(d.QueryContext.Columns) == 0 {
 		return nil
 	}
 
