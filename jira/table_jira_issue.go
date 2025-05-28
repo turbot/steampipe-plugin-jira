@@ -245,6 +245,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 
 //// LIST FUNCTION
 
+// The listIssues function first makes an initial request to determine the total number of issues without expanding any fields for efficiency. Subsequent paginated requests use the 'names' expansion to retrieve batches of issues with field names resolved.
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
 	const pageSize = 100
 
@@ -253,11 +254,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		jql = buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
 	}
 
-	// Prima richiesta solo per sapere quanti totali ci sono, senza Expand
 	initialOptions := jira.SearchOptions{
 		StartAt:    0,
 		MaxResults: 1,
-		Expand:     "", // <-- Ottimizzazione payload qui
+		Expand:     "",
 	}
 
 	initialResult, _, err := searchWithContext(ctx, d, jql, &initialOptions)
@@ -273,13 +273,12 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		return nil, nil
 	}
 
-	// Calcola gli startAt delle pagine
 	var starts []int
 	for i := 0; i < total; i += pageSize {
 		starts = append(starts, i)
 	}
 
-  maxWorkers := getMaxWorkers(ctx, d)
+	maxWorkers := getMaxWorkers(ctx, d)
 
 	sem := make(chan struct{}, maxWorkers)
 	var wg sync.WaitGroup
@@ -301,7 +300,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 			options := jira.SearchOptions{
 				StartAt:    startAt,
 				MaxResults: pageSize,
-				Expand:     "names", // OK tenere espansione qui per batch di record
+				Expand:     "names",
 			}
 
 			res, _, err := searchWithContext(ctx, d, jql, &options)
