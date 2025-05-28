@@ -171,7 +171,7 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydra
 		}
 
 		for _, c := range w.Worklogs {
-			d.StreamListItem(ctx, WorklogDetails{c, c.IssueID})
+			d.StreamListItem(ctx, WorklogDetails{c, issueId})
 
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
