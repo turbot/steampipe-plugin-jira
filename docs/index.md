@@ -88,6 +88,9 @@ connection "jira" {
   # Can also be set with the `JIRA_PERSONAL_ACCESS_TOKEN` environment variable.
   # Personal Access Token can only be used to query jira_backlog_issue, jira_board, jira_issue and jira_sprint tables.
   # personal_access_token = "MDU0MDMx7cE25TQ3OujDfy/vkv/eeSXXoh/zXY1ex9cp"
+
+  # Number of parallel API requests to Jira (default: 1)
+  # workers = 4
 }
 ```
 
@@ -95,6 +98,7 @@ connection "jira" {
 - `personal_access_token` - [API PAT](https://confluence.atlassian.com/enterprise/using-personal-access-tokens-1026032365.html) for self hosted Jira instances. This access token can only be used to query `jira_backlog_issue`, `jira_board`, `jira_issue` and `jira_sprint` tables.
 - `token` - [API token](https://id.atlassian.com/manage-profile/security/api-tokens) for user's Atlassian account.
 - `username` - Email address of agent user who have permission to access the API.
+- `workers` - Number of parallel API requests to Jira. Increasing this can speed up queries but may hit Jira rate limits. Default: 1.
 
 Alternatively, you can also use the standard Jira environment variables to obtain credentials **only if other arguments (`base_url`, `username` and `token` or `personal_access_token`) are not specified** in the connection:
 
