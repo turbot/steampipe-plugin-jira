@@ -273,19 +273,13 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 		return nil, nil
 	}
 
-	var starts []int
-	for i := 0; i < total; i += pageSize {
-		starts = append(starts, i)
-	}
-
 	maxWorkers := getMaxWorkers(ctx, d)
-
 	sem := make(chan struct{}, maxWorkers)
 	var wg sync.WaitGroup
 	var fetchErr error
 	var mu sync.Mutex
 
-	for _, start := range starts {
+	for i := 0; i < total; i += pageSize {
 		if d.RowsRemaining(ctx) == 0 {
 			break
 		}
@@ -319,13 +313,15 @@ func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData)
 					"epic":   getFieldKey(ctx, d, names, "Epic Link"),
 					"sprint": getFieldKey(ctx, d, names, "Sprint"),
 				}
+				mu.Lock()
 				d.StreamListItem(ctx, IssueInfo{issue, keys})
+				mu.Unlock()
 
 				if d.RowsRemaining(ctx) == 0 {
 					break
 				}
 			}
-		}(start)
+		}(i)
 	}
 
 	wg.Wait()
