@@ -216,6 +216,12 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Transform:   transform.FromField("V3Issue.Fields.Components").Transform(extractComponentIds),
 			},
 			{
+				Name:        "work_log",
+				Description: "List of work logs associated with the issue.",
+				Type:        proto.ColumnType_JSON,
+				Transform:   transform.FromField("V3Issue.Fields.Worklog.Worklogs"),
+			},
+			{
 				Name:        "fields",
 				Description: "Json object containing important subfields of the issue.",
 				Type:        proto.ColumnType_JSON,
@@ -298,6 +304,12 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 		"expand":     "names,changelog",
 	}
 
+	// Get dynamic custom field mappings
+	keys, err := getCustomFieldMappings(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues", "custom_field_mapping_error", err)
+	}
+
 	for {
 		searchResult, _, err := searchWithContext(ctx, d, requestBody)
 		if searchResult.NextPageToken != "" {
@@ -318,11 +330,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 		}
 
 		for _, issue := range issues {
-			// Get dynamic custom field mappings
-			keys, err := getCustomFieldMappings(ctx, d)
-			if err != nil {
-				plugin.Logger(ctx).Error("jira_issue.listIssues", "custom_field_mapping_error", err)
-			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
@@ -976,16 +983,16 @@ type V3Worklog struct {
 }
 
 type V3WorklogEntry struct {
-	Self             string `json:"self"`
-	Author           V3User `json:"author"`
-	Comment          string `json:"comment,omitempty"`
-	Created          string `json:"created"`
-	Updated          string `json:"updated"`
-	Started          string `json:"started"`
-	TimeSpent        string `json:"timeSpent"`
-	TimeSpentSeconds int    `json:"timeSpentSeconds"`
-	ID               string `json:"id"`
-	IssueID          string `json:"issueId"`
+	Self             string                 `json:"self"`
+	Author           V3User                 `json:"author"`
+	Comment          map[string]interface{} `json:"comment,omitempty"`
+	Created          string                 `json:"created"`
+	Updated          string                 `json:"updated"`
+	Started          string                 `json:"started"`
+	TimeSpent        string                 `json:"timeSpent"`
+	TimeSpentSeconds int                    `json:"timeSpentSeconds"`
+	ID               string                 `json:"id"`
+	IssueID          string                 `json:"issueId"`
 }
 
 type V3TimeTracking struct {
