@@ -188,7 +188,6 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 
 		}
 	}
-	// filters = append(filters, fields)
 
 	if len(filters) > 0 {
 		return strings.Join(filters, " AND ")
