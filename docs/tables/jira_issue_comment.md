@@ -152,7 +152,7 @@ from
   jira_issue_comment
 where
   id = '10015'
-  and issue_id = '12345';;
+  and issue_id = '12345';
 ```
 
 ```sql+sqlite
