@@ -312,7 +312,6 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 		requiredFields = append(requiredFields, v)
 	}
 
-	plugin.Logger(ctx).Error("requiredFields", "=====>>>", requiredFields)
 	// Use dynamic field selection
 	requestBody := map[string]interface{}{
 		"jql":        jql,
