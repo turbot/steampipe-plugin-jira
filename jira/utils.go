@@ -100,6 +100,20 @@ func convertJiraTime(_ context.Context, d *transform.TransformData) (interface{}
 		return time.Time(v), nil
 	} else if v, ok := d.Value.(*jira.Time); ok {
 		return time.Time(*v), nil
+	} else if v, ok := d.Value.(*string); ok {
+		// Handle *string type from V3 API
+		if v == nil || *v == "" {
+			return nil, nil
+		}
+		layout := "2006-01-02T15:04:05.000-0700"
+		return time.Parse(layout, *v)
+	} else if v, ok := d.Value.(string); ok {
+		// Handle empty strings from V3 API
+		if v == "" {
+			return nil, nil
+		}
+		layout := "2006-01-02T15:04:05.000-0700"
+		return time.Parse(layout, v)
 	}
 	return nil, nil
 }
@@ -109,13 +123,24 @@ func convertJiraDate(_ context.Context, d *transform.TransformData) (interface{}
 	if d.Value == nil {
 		return nil, nil
 	}
+	switch t := d.Value.(type) {
+	case jira.Date:
+		return time.Time(t), nil
+	case *jira.Date:
+		return time.Time(*t), nil
+	case *string:
+		return time.Parse(time.DateOnly, *t)
+	case string:
+		return time.Parse(time.DateOnly, t)
+	}
 	return time.Time(d.Value.(jira.Date)), nil
 }
 
 func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*plugin.Column) string {
 	filters := []string{}
-
+	// fields := "fields"
 	for _, filterQualItem := range tableColumns {
+		// fields = fields + getIssueJQLKey(filterQualItem.Name) + ","
 		filterQual := equalQuals[filterQualItem.Name]
 		if filterQual == nil {
 			continue
@@ -132,11 +157,22 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 					value := qual.Value
 					switch filterQualItem.Type {
 					case proto.ColumnType_STRING:
+						jqlFieldName := getIssueJQLKey(filterQualItem.Name)
 						switch qual.Operator {
 						case "=":
-							filters = append(filters, fmt.Sprintf("\"%s\" = \"%s\"", getIssueJQLKey(filterQualItem.Name), value.GetStringValue()))
+							// Special handling for key field - don't quote field name but quote value
+							if filterQualItem.Name == "key" {
+								filters = append(filters, fmt.Sprintf("%s = \"%s\"", jqlFieldName, value.GetStringValue()))
+							} else {
+								filters = append(filters, fmt.Sprintf("\"%s\" = \"%s\"", jqlFieldName, value.GetStringValue()))
+							}
 						case "<>":
-							filters = append(filters, fmt.Sprintf("%s != \"%s\"", getIssueJQLKey(filterQualItem.Name), value.GetStringValue()))
+							// Special handling for key field
+							if filterQualItem.Name == "key" {
+								filters = append(filters, fmt.Sprintf("%s != \"%s\"", jqlFieldName, value.GetStringValue()))
+							} else {
+								filters = append(filters, fmt.Sprintf("%s != \"%s\"", jqlFieldName, value.GetStringValue()))
+							}
 						}
 					case proto.ColumnType_TIMESTAMP:
 						switch qual.Operator {
@@ -152,6 +188,7 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 
 		}
 	}
+	// filters = append(filters, fields)
 
 	if len(filters) > 0 {
 		return strings.Join(filters, " AND ")
@@ -162,6 +199,7 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 
 func getIssueJQLKey(columnName string) string {
 	remappedColumns := map[string]string{
+		"key":             "key",
 		"resolution_date": "resolutiondate",
 		"status_category": "statuscategory",
 	}
