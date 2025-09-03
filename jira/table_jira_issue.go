@@ -252,9 +252,9 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
 	queryLimit := d.QueryContext.Limit
-	var limit int = 10
+	var limit int = 500
 	if d.QueryContext.Limit != nil {
-		if *queryLimit < 10 {
+		if *queryLimit < 500 {
 			limit = int(*queryLimit)
 		}
 	}
