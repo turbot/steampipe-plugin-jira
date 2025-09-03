@@ -231,6 +231,8 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "changelog",
 				Description: "JSON object containing changelog of the issue.",
 				Type:        proto.ColumnType_JSON,
+				Hydrate:     getChangelogForIssue,
+				Transform:   transform.FromValue(),
 			},
 			{
 				Name:        "tags",
@@ -296,18 +298,27 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 		}
 	}
 
-	// Use *all to get all fields including custom fields
-	requestBody := map[string]interface{}{
-		"jql":        jql,
-		"maxResults": limit,
-		"fields":     []string{"*all"},
-		"expand":     "names,changelog",
-	}
-
 	// Get dynamic custom field mappings
 	keys, err := getCustomFieldMappings(ctx, d)
 	if err != nil {
 		plugin.Logger(ctx).Error("jira_issue.listIssues", "custom_field_mapping_error", err)
+	}
+
+	// Get required fields based on selected columns
+	requiredFields := getRequiredFields(ctx, d)
+
+	// add custom fields 
+	for _, v := range keys {
+		requiredFields = append(requiredFields, v)
+	}
+
+	plugin.Logger(ctx).Error("requiredFields", "=====>>>", requiredFields)
+	// Use dynamic field selection
+	requestBody := map[string]interface{}{
+		"jql":        jql,
+		"maxResults": limit,
+		"fields":     requiredFields,
+		"expand":     "names", // Remove changelog from expand
 	}
 
 	for {
@@ -345,6 +356,138 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 	}
 }
 
+//// HELPER FUNCTIONS
+
+// getRequiredFields determines which fields are needed based on the selected columns
+func getRequiredFields(ctx context.Context, d *plugin.QueryData) []string {
+	// Map of column names to their corresponding field names
+	columnToFieldMap := map[string]string{
+		// Basic fields
+		"summary":         "summary",
+		"created":         "created",
+		"updated":         "updated",
+		"description":     "description",
+		"type":            "issuetype",
+		"project_key":     "project",
+		"project_id":      "project",
+		"project_name":    "project",
+		"status":          "status",
+		"status_category": "statusCategory",
+
+		// User fields
+		"assignee_account_id":   "assignee",
+		"assignee_display_name": "assignee",
+		"creator_account_id":    "creator",
+		"creator_display_name":  "creator",
+		"reporter_account_id":   "reporter",
+		"reporter_display_name": "reporter",
+
+		// Date and time fields
+		"duedate":         "duedate",
+		"resolution_date": "resolutiondate",
+
+		// Other fields
+		"priority":   "priority",
+		"labels":     "labels",
+		"components": "components",
+		"work_log":   "worklog",
+
+		// JSON fields that need the full field object
+		"fields": "", // Need all fields for this
+
+		// Custom fields that require *all
+		"epic_key":     "", // Requires custom field access
+		"sprint_ids":   "", // Requires custom field access
+		"sprint_names": "", // Requires custom field access
+
+		// Special handling
+		"changelog": "",       // Fetched separately
+		"tags":      "labels", // Derived from labels
+	}
+
+	selectedFields := []string{}
+	// Add fields based on selected columns
+	selectedColumns := d.QueryContext.Columns
+	for _, col := range selectedColumns {
+		if field, exists := columnToFieldMap[col]; exists && field != "" {
+			if !contains(selectedFields, field) {
+				selectedFields = append(selectedFields, field)
+			}
+		}
+	}
+
+	return selectedFields
+}
+
+// contains checks if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// getChangelog fetches changelog data for an issue using the correct endpoint
+func getChangelog(ctx context.Context, d *plugin.QueryData, issueKey string) (interface{}, error) {
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.getChangelog", "connection_error", err)
+		return nil, err
+	}
+
+	// Use the correct changelog endpoint with pagination
+	startAt := 0
+	maxResults := 100
+	var allHistories []interface{}
+
+	for {
+		// Make API call to the changelog endpoint
+		req, err := client.NewRequestWithContext(ctx, "GET",
+			fmt.Sprintf("rest/api/3/issue/%s/changelog?startAt=%d&maxResults=%d", issueKey, startAt, maxResults), nil)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_issue.getChangelog", "request_creation_error", err)
+			return nil, err
+		}
+
+		// Set headers
+		req.Header.Set("Accept", "application/json")
+
+		// Execute the request
+		var changelogResponse struct {
+			Self       string        `json:"self"`
+			StartAt    int           `json:"startAt"`
+			MaxResults int           `json:"maxResults"`
+			Total      int           `json:"total"`
+			IsLast     bool          `json:"isLast"`
+			Values     []interface{} `json:"values"`
+		}
+
+		resp, err := client.Do(req, &changelogResponse)
+		if err != nil {
+			if resp != nil && resp.StatusCode == 404 {
+				return nil, nil
+			}
+			plugin.Logger(ctx).Error("jira_issue.getChangelog", "api_error", err)
+			return nil, err
+		}
+
+		// Add the histories from this page
+		allHistories = append(allHistories, changelogResponse.Values...)
+
+		// Check if this is the last page
+		if changelogResponse.IsLast {
+			break
+		}
+
+		// Move to next page
+		startAt += maxResults
+	}
+
+	return allHistories, nil
+}
+
 //// HYDRATE FUNCTION
 
 func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
@@ -376,12 +519,13 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, err
 	}
 
-	// Use *all to get all fields including custom fields - the issue is in unmarshalling, not the API request
-	fieldsParam := "*all"
+	// Get required fields based on selected columns
+	requiredFields := getRequiredFields(ctx, d)
+	fieldsParam := strings.Join(requiredFields, ",")
 
-	// Add query parameters for field expansion
+	// Add query parameters for field expansion (without changelog)
 	q := req.URL.Query()
-	q.Add("expand", "names,changelog")
+	q.Add("expand", "names") // Remove changelog from expand
 	q.Add("fields", fieldsParam)
 	req.URL.RawQuery = q.Encode()
 
@@ -411,6 +555,11 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		V3Issue: v3Issue,
 		Keys:    keys,
 	}, nil
+}
+
+func getChangelogForIssue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	issue := h.Item.(IssueInfo)
+	return getChangelog(ctx, d, issue.V3Issue.Key)
 }
 
 func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
