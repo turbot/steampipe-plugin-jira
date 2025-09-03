@@ -101,13 +101,13 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "sprint_ids",
 				Description: "The list of ids of the sprint to which issue belongs.",
 				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromField("V3Issue.Fields.Sprints").Transform(extractSprintIds),
+				Transform:   transform.From(extractSprintIdsFromDynamicField),
 			},
 			{
 				Name:        "sprint_names",
 				Description: "The list of names of the sprint to which issue belongs.",
 				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromField("V3Issue.Fields.Sprints").Transform(extractSprintNames),
+				Transform:   transform.From(extractSprintNamesFromDynamicField),
 			},
 
 			// other important fields
@@ -290,6 +290,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 		}
 	}
 
+	// Use *all to get all fields including custom fields
 	requestBody := map[string]interface{}{
 		"jql":        jql,
 		"maxResults": limit,
@@ -317,11 +318,10 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 		}
 
 		for _, issue := range issues {
-			// Note: v3 API doesn't provide names in the response like v2 did
-			// We'll need to handle epic and sprint fields differently or use hardcoded field names
-			keys := map[string]string{
-				"epic":   "customfield_10014",
-				"sprint": "customfield_10020",
+			// Get dynamic custom field mappings
+			keys, err := getCustomFieldMappings(ctx, d)
+			if err != nil {
+				plugin.Logger(ctx).Error("jira_issue.listIssues", "custom_field_mapping_error", err)
 			}
 			d.StreamListItem(ctx, IssueInfo{issue, keys})
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
@@ -369,10 +369,13 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, err
 	}
 
+	// Use *all to get all fields including custom fields - the issue is in unmarshalling, not the API request
+	fieldsParam := "*all"
+
 	// Add query parameters for field expansion
 	q := req.URL.Query()
 	q.Add("expand", "names,changelog")
-	q.Add("fields", "*all")
+	q.Add("fields", fieldsParam)
 	req.URL.RawQuery = q.Encode()
 
 	// Set headers
@@ -390,10 +393,10 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 		return nil, err
 	}
 
-	// Create field keys mapping for custom fields
-	keys := map[string]string{
-		"epic":   "customfield_10014",
-		"sprint": "customfield_10020",
+	// Get dynamic custom field mappings
+	keys, err := getCustomFieldMappings(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.getIssue", "custom_field_mapping_error", err)
 	}
 
 	// Return the issue info
@@ -440,12 +443,54 @@ func extractRequiredField(_ context.Context, d *transform.TransformData) (interf
 	// Fallback: try to get the custom field key for the requested field type
 	if fieldKey, exists := issueInfo.Keys[param]; exists {
 		// Access the custom field from the raw JSON fields
-		if fieldsBytes, err := json.Marshal(issueInfo.V3Issue.Fields); err == nil {
+		if len(issueInfo.V3Issue.Fields.RawFields) > 0 {
 			var fieldsMap map[string]interface{}
-			if err := json.Unmarshal(fieldsBytes, &fieldsMap); err == nil {
+			if err := json.Unmarshal(issueInfo.V3Issue.Fields.RawFields, &fieldsMap); err == nil {
 				if value, exists := fieldsMap[fieldKey]; exists {
 					return value, nil
 				}
+			}
+		}
+	}
+	return nil, nil
+}
+
+func extractSprintIdsFromDynamicField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+
+	// Get the dynamic sprint field ID
+	sprintFieldKey, exists := issueInfo.Keys["sprint"]
+	if !exists {
+		return nil, nil
+	}
+
+	// Access the sprint field from the raw JSON fields
+	if len(issueInfo.V3Issue.Fields.RawFields) > 0 {
+		var fieldsMap map[string]interface{}
+		if err := json.Unmarshal(issueInfo.V3Issue.Fields.RawFields, &fieldsMap); err == nil {
+			if sprintData, exists := fieldsMap[sprintFieldKey]; exists && sprintData != nil {
+				return extractSprintIds(ctx, &transform.TransformData{Value: sprintData})
+			}
+		}
+	}
+	return nil, nil
+}
+
+func extractSprintNamesFromDynamicField(ctx context.Context, d *transform.TransformData) (interface{}, error) {
+	issueInfo := d.HydrateItem.(IssueInfo)
+
+	// Get the dynamic sprint field ID
+	sprintFieldKey, exists := issueInfo.Keys["sprint"]
+	if !exists {
+		return nil, nil
+	}
+
+	// Access the sprint field from the raw JSON fields
+	if len(issueInfo.V3Issue.Fields.RawFields) > 0 {
+		var fieldsMap map[string]interface{}
+		if err := json.Unmarshal(issueInfo.V3Issue.Fields.RawFields, &fieldsMap); err == nil {
+			if sprintData, exists := fieldsMap[sprintFieldKey]; exists && sprintData != nil {
+				return extractSprintNames(ctx, &transform.TransformData{Value: sprintData})
 			}
 		}
 	}
@@ -593,6 +638,65 @@ func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]stri
 	return ""
 }
 
+// getCustomFieldMappings retrieves and caches custom field mappings dynamically
+func getCustomFieldMappings(ctx context.Context, d *plugin.QueryData) (map[string]string, error) {
+	cacheKey := "custom_field_mappings"
+	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
+		return cachedData.(map[string]string), nil
+	}
+
+	client, err := connect(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.getCustomFieldMappings", "connection_error", err)
+		return nil, err
+	}
+
+	mappings := make(map[string]string)
+
+	// Search for common custom fields
+	fieldQueries := []string{"Sprint", "Epic"}
+
+	for _, query := range fieldQueries {
+		req, err := client.NewRequestWithContext(ctx, "GET", fmt.Sprintf("rest/api/3/field/search?query=%s", query), nil)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_issue.getCustomFieldMappings", "request_creation_error", err)
+			continue
+		}
+
+		req.Header.Set("Accept", "application/json")
+
+		var response CustomFieldSearchResponse
+		_, err = client.Do(req, &response)
+		if err != nil {
+			plugin.Logger(ctx).Error("jira_issue.getCustomFieldMappings", "api_error", err)
+			continue
+		}
+
+		for _, field := range response.Values {
+			switch field.Name {
+			case "Sprint":
+				mappings["sprint"] = field.ID
+			case "Epic Link":
+				mappings["epic"] = field.ID
+			case "Story Points":
+				mappings["storypoints"] = field.ID
+			}
+		}
+	}
+
+	// Set default fallback values if not found
+	if mappings["sprint"] == "" {
+		mappings["sprint"] = "customfield_10020"
+	}
+	if mappings["epic"] == "" {
+		mappings["epic"] = "customfield_10014"
+	}
+
+	// Cache for 1 hour
+	d.ConnectionManager.Cache.Set(cacheKey, mappings)
+	return mappings, nil
+}
+
 func searchWithContext(ctx context.Context, d *plugin.QueryData, requestBody map[string]interface{}) (*searchResult, *jira.Response, error) {
 	client, err := connect(ctx, d)
 	if err != nil {
@@ -621,6 +725,19 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, requestBody map
 }
 
 //// Required Structs
+
+type CustomFieldSearchResponse struct {
+	MaxResults int           `json:"maxResults"`
+	StartAt    int           `json:"startAt"`
+	Total      int           `json:"total"`
+	IsLast     bool          `json:"isLast"`
+	Values     []CustomField `json:"values"`
+}
+
+type CustomField struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
 
 type ListIssuesResult struct {
 	Expand     string            `json:"expand"`
@@ -683,10 +800,20 @@ type V3Fields struct {
 	Watches               V3Watches        `json:"watches"`
 	LastViewed            *string          `json:"lastViewed"`
 	Parent                *V3Parent        `json:"parent"` // Can be null for top-level issues
-	// Sprint custom field
-	Sprints []V3Sprint `json:"customfield_10020"` // Sprint information
-	// Custom fields (using interface{} to handle any custom field)
-	CustomFields map[string]interface{} `json:"-"` // We'll populate this separately
+	// Store the raw JSON for dynamic field access
+	RawFields json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON implements custom unmarshaling to capture raw JSON
+func (f *V3Fields) UnmarshalJSON(data []byte) error {
+	// Store raw JSON for dynamic field access
+	f.RawFields = make(json.RawMessage, len(data))
+	copy(f.RawFields, data)
+
+	// Create a type alias to avoid recursion
+	type Alias V3Fields
+	aux := (*Alias)(f)
+	return json.Unmarshal(data, aux)
 }
 
 type V3Parent struct {
