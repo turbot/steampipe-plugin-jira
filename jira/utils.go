@@ -138,9 +138,7 @@ func convertJiraDate(_ context.Context, d *transform.TransformData) (interface{}
 
 func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*plugin.Column) string {
 	filters := []string{}
-	// fields := "fields"
 	for _, filterQualItem := range tableColumns {
-		// fields = fields + getIssueJQLKey(filterQualItem.Name) + ","
 		filterQual := equalQuals[filterQualItem.Name]
 		if filterQual == nil {
 			continue
