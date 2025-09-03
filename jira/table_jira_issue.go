@@ -564,34 +564,6 @@ func extractDescription(_ context.Context, d *transform.TransformData) (interfac
 	return result, nil
 }
 
-func extractIssueTypeName(_ context.Context, d *transform.TransformData) (interface{}, error) {
-	if d.Value == nil {
-		return nil, nil
-	}
-
-	fieldsMap, ok := d.Value.(map[string]interface{})
-	if !ok {
-		return nil, nil
-	}
-
-	issuetype, exists := fieldsMap["issuetype"]
-	if !exists {
-		return nil, nil
-	}
-
-	issuetypeMap, ok := issuetype.(map[string]interface{})
-	if !ok {
-		return nil, nil
-	}
-
-	name, exists := issuetypeMap["name"]
-	if !exists {
-		return nil, nil
-	}
-
-	return name, nil
-}
-
 func getTypeFromFields(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	issueInfo := d.HydrateItem.(IssueInfo)
 
