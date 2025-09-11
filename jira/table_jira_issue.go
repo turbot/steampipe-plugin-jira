@@ -283,19 +283,13 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 
 	jql := ""
 
-	// The "jira_issue_comment" table is a child of the "jira_issue" table. When querying the child table, the parent table is executed first.
-	// This restriction is necessary to correctly build the input parameters when querying only the "jira_issue" table.
-	// Without this check, a query like "select title, id, issue_id, body from jira_issue_comment where issue_id = '10015'" will fail with an error.
-	// Error: jira: request failed. Please analyze the request body for more details. Status code: 400: could not parse JSON: unexpected end of JSON input
-	if d.Table.Name == "jira_issue" {
-		qualJQL := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
+	qualJQL := buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
 
-		// Always include project key to avoid unbounded JQL error
-		if qualJQL == "" {
-			jql = fmt.Sprintf("project=%s", project.Key)
-		} else {
-			jql = fmt.Sprintf("project=%s AND %s", project.Key, qualJQL)
-		}
+	// Always include project key to avoid unbounded JQL error
+	if qualJQL == "" {
+		jql = fmt.Sprintf("project=%s", project.Key)
+	} else {
+		jql = fmt.Sprintf("project=%s AND %s", project.Key, qualJQL)
 	}
 
 	// Get dynamic custom field mappings
@@ -307,7 +301,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 	// Get required fields based on selected columns
 	requiredFields := getRequiredFields(ctx, d)
 
-	// add custom fields 
+	// add custom fields
 	for _, v := range keys {
 		requiredFields = append(requiredFields, v)
 	}
