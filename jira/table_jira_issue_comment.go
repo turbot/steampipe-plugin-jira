@@ -23,7 +23,7 @@ func tableIssueComment(_ context.Context) *plugin.Table {
 			Hydrate:    getIssueComment,
 		},
 		List: &plugin.ListConfig{
-			Hydrate:       listIssueComments,
+			Hydrate: listIssueComments,
 			KeyColumns: plugin.KeyColumnSlice{
 				{Name: "issue_id", Require: plugin.Required},
 			},
