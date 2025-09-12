@@ -15,21 +15,19 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 )
 
-func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
+//// CONNECT FUNCTION
 
-	// Load connection from cache, which preserves throttling protection etc
+func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	cacheKey := "atlassian-jira"
 	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
 		return cachedData.(*jira.Client), nil
 	}
 
-	// Default to the env var settings
 	baseUrl := os.Getenv("JIRA_URL")
 	username := os.Getenv("JIRA_USER")
 	token := os.Getenv("JIRA_TOKEN")
-	personal_access_token := os.Getenv("JIRA_PERSONAL_ACCESS_TOKEN")
+	personalAccessToken := os.Getenv("JIRA_PERSONAL_ACCESS_TOKEN")
 
-	// Prefer config options given in Steampipe
 	jiraConfig := GetConfig(d.Connection)
 
 	if jiraConfig.BaseUrl != nil {
@@ -42,7 +40,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 		token = *jiraConfig.Token
 	}
 	if jiraConfig.PersonalAccessToken != nil {
-		personal_access_token = *jiraConfig.PersonalAccessToken
+		personalAccessToken = *jiraConfig.PersonalAccessToken
 	}
 
 	if baseUrl == "" {
@@ -51,19 +49,18 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	if username == "" && token != "" {
 		return nil, errors.New("'token' is set but 'username' is not set in the connection configuration")
 	}
-	if token == "" && personal_access_token == "" {
+	if token == "" && personalAccessToken == "" {
 		return nil, errors.New("'token' or 'personal_access_token' must be set in the connection configuration")
 	}
-	if token != "" && personal_access_token != "" {
+	if token != "" && personalAccessToken != "" {
 		return nil, errors.New("'token' and 'personal_access_token' are both set, please use only one auth method")
 	}
 
 	var client *jira.Client
 	var err error
 
-	if personal_access_token != "" {
-		// If the username is empty, let's assume the user is using a PAT
-		tokenProvider := jirav2.BearerAuthTransport{Token: personal_access_token}
+	if personalAccessToken != "" {
+		tokenProvider := jirav2.BearerAuthTransport{Token: personalAccessToken}
 		client, err = jira.NewClient(tokenProvider.Client(), baseUrl)
 	} else {
 		tokenProvider := jira.BasicAuthTransport{
@@ -77,10 +74,8 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 		return nil, fmt.Errorf("error creating Jira client: %s", err.Error())
 	}
 
-	// Save to cache
 	d.ConnectionManager.Cache.Set(cacheKey, client)
 
-	// Done
 	return client, nil
 }
 
@@ -89,9 +84,8 @@ const (
 	ColumnDescriptionTitle = "Title of the resource."
 )
 
-//// TRANSFORM FUNCTION
+//// TRANSFORM FUNCTIONS
 
-// convertJiraTime:: converts jira.Time to time.Time
 func convertJiraTime(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	if d.Value == nil {
 		return nil, nil
@@ -104,13 +98,14 @@ func convertJiraTime(_ context.Context, d *transform.TransformData) (interface{}
 	return nil, nil
 }
 
-// convertJiraDate:: converts jira.Date to time.Time
 func convertJiraDate(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	if d.Value == nil {
 		return nil, nil
 	}
 	return time.Time(d.Value.(jira.Date)), nil
 }
+
+//// JQL Builder
 
 func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*plugin.Column) string {
 	filters := []string{}
@@ -121,7 +116,6 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 			continue
 		}
 
-		// Check only if filter qual map matches with optional column name
 		if filterQual.Name == filterQualItem.Name {
 			if filterQual.Quals == nil {
 				continue
@@ -145,11 +139,9 @@ func buildJQLQueryFromQuals(equalQuals plugin.KeyColumnQualMap, tableColumns []*
 						case "<>":
 							filters = append(filters, fmt.Sprintf("\"%s\" != \"%s\"", getIssueJQLKey(filterQualItem.Name), value.GetTimestampValue().AsTime().Format("2006-01-02 15:04")))
 						}
-
 					}
 				}
 			}
-
 		}
 	}
 
@@ -170,4 +162,87 @@ func getIssueJQLKey(columnName string) string {
 		return val
 	}
 	return strings.ToLower(strings.Split(columnName, "_")[0])
+}
+
+//// WORKERS MANAGEMENT
+
+func getMaxWorkers(ctx context.Context, d *plugin.QueryData) int {
+	const defaultWorkers = 1
+	const cacheKey = "jira_max_workers"
+
+	if cached, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
+		if workers, ok := cached.(int); ok {
+			return workers
+		}
+	}
+
+	maxWorkers := defaultWorkers
+
+	jiraConfig := GetConfig(d.Connection)
+
+	if jiraConfig.Workers != nil && *jiraConfig.Workers > 0 {
+		maxWorkers = *jiraConfig.Workers
+	}
+
+	d.ConnectionManager.Cache.Set(cacheKey, maxWorkers)
+
+	plugin.Logger(ctx).Warn("getMaxWorkers", "found_workers", maxWorkers)
+
+	return maxWorkers
+}
+
+//// DYNAMIC FIELDS BUILDER
+
+func getRequestedFields(ctx context.Context, d *plugin.QueryData) []string {
+	if len(d.QueryContext.Columns) == 0 {
+		return nil
+	}
+
+	fieldMap := map[string]string{
+		"id":                    "id",
+		"key":                   "key",
+		"summary":               "summary",
+		"status":                "status",
+		"status_category":       "status",
+		"project_key":           "project",
+		"project_id":            "project",
+		"project_name":          "project",
+		"created":               "created",
+		"updated":               "updated",
+		"duedate":               "duedate",
+		"assignee_account_id":   "assignee",
+		"assignee_display_name": "assignee",
+		"creator_account_id":    "creator",
+		"creator_display_name":  "creator",
+		"reporter_account_id":   "reporter",
+		"reporter_display_name": "reporter",
+		"resolution_date":       "resolutiondate",
+		"priority":              "priority",
+		"type":                  "issuetype",
+		"labels":                "labels",
+		"components":            "components",
+		"fields":                "*",
+	}
+
+	fields := make(map[string]bool)
+
+	for _, column := range d.QueryContext.Columns {
+		jiraField, exists := fieldMap[column]
+		if exists {
+			fields[jiraField] = true
+		} else {
+			fields["*"] = true
+		}
+	}
+
+	if fields["*"] {
+		return nil
+	}
+
+	var fieldList []string
+	for f := range fields {
+		fieldList = append(fieldList, f)
+	}
+
+	return fieldList
 }

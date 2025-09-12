@@ -5,12 +5,13 @@ import (
 	"io"
 	"net/url"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
-
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin/transform"
 )
 
 //// TABLE DEFINITION
@@ -244,75 +245,92 @@ func tableIssue(_ context.Context) *plugin.Table {
 
 //// LIST FUNCTION
 
+// The listIssues function first makes an initial request to determine the total number of issues without expanding any fields for efficiency. Subsequent paginated requests use the 'names' expansion to retrieve batches of issues with field names resolved.
 func listIssues(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (interface{}, error) {
-
-	last := 0
-
-	// If the requested number of items is less than the paging max limit
-	// set the limit to that instead
-	queryLimit := d.QueryContext.Limit
-	var limit int = 500
-	if d.QueryContext.Limit != nil {
-		if *queryLimit < 500 {
-			limit = int(*queryLimit)
-		}
-	}
-	options := jira.SearchOptions{
-		StartAt:    0,
-		MaxResults: limit,
-		Expand:     "names,changelog",
-	}
+	const pageSize = 100
 
 	jql := ""
-
-	// The "jira_issue_comment" table is a child of the "jira_issue" table. When querying the child table, the parent table is executed first.
-	// This restriction is necessary to correctly build the input parameters when querying only the "jira_issue" table.
-	// Without this check, a query like "select title, id, issue_id, body from jira_issue_comment where issue_id = '10015'" will fail with an error.
-	// Error: jira: request failed. Please analyze the request body for more details. Status code: 400: could not parse JSON: unexpected end of JSON input
 	if d.Table.Name == "jira_issue" {
 		jql = buildJQLQueryFromQuals(d.Quals, d.Table.Columns)
 	}
 
-	for {
-		searchResult, res, err := searchWithContext(ctx, d, jql, &options)
-		if err != nil {
-			plugin.Logger(ctx).Error("jira_issue.listIssues", "search_error", err)
-			return nil, err
-		}
-		issues := searchResult.Issues
-		names := searchResult.Names
-		body, _ := io.ReadAll(res.Body)
-		plugin.Logger(ctx).Debug("jira_issue.listIssues", "res_body", string(body))
-
-		if err != nil {
-			if isNotFoundError(err) || isBadRequestError(err) {
-				return nil, nil
-			}
-			plugin.Logger(ctx).Error("jira_issue.listIssues", "api_error", err)
-			return nil, err
-		}
-
-		for _, issue := range issues {
-			plugin.Logger(ctx).Debug("Issue output:", issue)
-			plugin.Logger(ctx).Debug("Issue names output:", names)
-			keys := map[string]string{
-				"epic":   getFieldKey(ctx, d, names, "Epic Link"),
-				"sprint": getFieldKey(ctx, d, names, "Sprint"),
-			}
-			d.StreamListItem(ctx, IssueInfo{issue, keys})
-			// Context may get cancelled due to manual cancellation or if the limit has been reached
-			if d.RowsRemaining(ctx) == 0 {
-				return nil, nil
-			}
-		}
-
-		last = searchResult.StartAt + len(issues)
-		if last >= searchResult.Total {
-			return nil, nil
-		} else {
-			options.StartAt = last
-		}
+	initialOptions := jira.SearchOptions{
+		StartAt:    0,
+		MaxResults: 1,
+		Expand:     "",
 	}
+
+	initialResult, _, err := searchWithContext(ctx, d, jql, &initialOptions)
+	if err != nil {
+		plugin.Logger(ctx).Error("jira_issue.listIssues", "initial_search_error", err)
+		return nil, err
+	}
+
+	total := initialResult.Total
+	names := initialResult.Names
+
+	if total == 0 {
+		return nil, nil
+	}
+
+	maxWorkers := getMaxWorkers(ctx, d)
+	sem := make(chan struct{}, maxWorkers)
+	var wg sync.WaitGroup
+	var fetchErr error
+	var mu sync.Mutex
+
+	for i := 0; i < total; i += pageSize {
+		if d.RowsRemaining(ctx) == 0 {
+			break
+		}
+
+		sem <- struct{}{}
+		wg.Add(1)
+
+		go func(startAt int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			options := jira.SearchOptions{
+				StartAt:    startAt,
+				MaxResults: pageSize,
+				Expand:     "names",
+			}
+
+			res, _, err := searchWithContext(ctx, d, jql, &options)
+			if err != nil {
+				plugin.Logger(ctx).Error("jira_issue.listIssues", "page_search_error", err)
+				mu.Lock()
+				if fetchErr == nil {
+					fetchErr = err
+				}
+				mu.Unlock()
+				return
+			}
+
+			for _, issue := range res.Issues {
+				keys := map[string]string{
+					"epic":   getFieldKey(ctx, d, names, "Epic Link"),
+					"sprint": getFieldKey(ctx, d, names, "Sprint"),
+				}
+				mu.Lock()
+				d.StreamListItem(ctx, IssueInfo{issue, keys})
+				mu.Unlock()
+
+				if d.RowsRemaining(ctx) == 0 {
+					break
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	if fetchErr != nil {
+		return nil, fetchErr
+	}
+
+	return nil, nil
 }
 
 //// HYDRATE FUNCTION
@@ -458,14 +476,20 @@ func searchWithContext(ctx context.Context, d *plugin.QueryData, jql string, opt
 		uv.Add("jql", jql)
 	}
 
-	// Append the values of options to the path parameters
 	if options.StartAt != 0 {
 		uv.Add("startAt", strconv.Itoa(options.StartAt))
 	}
 	if options.MaxResults != 0 {
 		uv.Add("maxResults", strconv.Itoa(options.MaxResults))
 	}
-	uv.Add("expand", options.Expand)
+	if options.Expand != "" {
+		uv.Add("expand", options.Expand)
+	}
+
+	requestedFields := getRequestedFields(ctx, d)
+	if len(requestedFields) > 0 {
+		uv.Add("fields", strings.Join(requestedFields, ","))
+	}
 
 	u.RawQuery = uv.Encode()
 
