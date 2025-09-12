@@ -1,4 +1,4 @@
-module github.com/turbot/steampipe-plugin-jira
+module github.com/turbot/steampipe-plugin-jira/v2
 
 go 1.24
 
