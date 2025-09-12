@@ -1,3 +1,22 @@
+## v2.0.0 [2025-09-12]
+
+_Breaking changes_
+
+- [jira_issue_comment](https://hub.steampipe.io/plugins/turbot/jira/tables/jira_issue_comment) table now requires an `issue_id` filter in the `WHERE` or `JOIN` clause. ([#180](https://github.com/turbot/steampipe-plugin-jira/pull/180))
+
+_Enhancements_
+
+- Updated the `jira_issue` table to use the latest [Jira Cloud platform REST API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-jql-get). ([#180](https://github.com/turbot/steampipe-plugin-jira/pull/180))
+
+_Bug fixes_
+
+- Fixed the `jira_issue_worklog` table to correctly populate the `issue_id` column when provided as a query parameter. ([#164](https://github.com/turbot/steampipe-plugin-jira/pull/164))
+
+_Dependencies_
+
+- Recompiled plugin with Go version `1.24`. ([#175](https://github.com/turbot/steampipe-plugin-jira/pull/175))
+- Recompiled plugin with [steampipe-plugin-sdk v5.13.0](https://github.com/turbot/steampipe-plugin-sdk/blob/develop/CHANGELOG.md#v5130-2025-07-21) that addresses critical and high vulnerabilities in dependent packages. ([#175](https://github.com/turbot/steampipe-plugin-jira/pull/175))
+
 ## v1.2.0 [2025-04-17]
 
 _Dependencies_
