@@ -11,6 +11,9 @@ Jira is a project management tool that aids in issue tracking and agile project 
 
 The `jira_issue_comment` table provides insights into the comments made on issues within the Jira platform. As a project manager or a team member, you can explore comment-specific details through this table, including the author of the comment, creation date, and the issue the comment is associated with. Utilize it to track communication, understand the context of discussions, and monitor the progress of issues.
 
+*Important Note:*
+- You *MUST* specify the `issue_id` in the WHERE or JOIN clause in order to query this table.
+
 ## Examples
 
 ### Basic info
@@ -23,7 +26,9 @@ select
   issue_id,
   author
 from
-  jira_issue_comment;
+  jira_issue_comment
+where
+ issue_id = '12345';
 ```
 
 ```sql+sqlite
@@ -33,10 +38,12 @@ select
   issue_id,
   author
 from
-  jira_issue_comment;
+  jira_issue_comment
+where
+ issue_id = '12345';
 ```
 
-### List comments that are hidden in Service Desk
+### List comments that are hidden in Service Desk for a issue
 Discover the segments that contain hidden comments in the Service Desk to gain insights into user feedback or issues that may not be publicly visible. This can be useful in understanding customer concerns and improving service quality.
 
 ```sql+postgres
@@ -50,7 +57,8 @@ select
 from
   jira_issue_comment
 where
-  jsd_public;
+  jsd_public
+  and issue_id = '12345';
 ```
 
 ```sql+sqlite
@@ -64,7 +72,8 @@ select
 from
   jira_issue_comment
 where
-  jsd_public;
+  jsd_public
+  and issue_id = '12345';
 ```
 
 ### List comments posted in the last 5 days for a particular issues
@@ -96,7 +105,7 @@ where
   and issue_id = '10021';
 ```
 
-### List comments that were updated in last 2 hours
+### List comments that were updated in last 2 hours for a issue
 Explore recent activity by identifying comments that have been updated in the past two hours. This is useful for staying informed about ongoing discussions or changes in your Jira issues.
 
 ```sql+postgres
@@ -109,7 +118,8 @@ select
 from
   jira_issue_comment
 where
-  updated >= now() - interval '2' hour;
+  issue_id = '12345'
+  and updated >= now() - interval '2' hour;
 ```
 
 ```sql+sqlite
@@ -122,7 +132,8 @@ select
 from
   jira_issue_comment
 where
-  updated >= datetime('now', '-2 hours');
+  issue_id = '12345'
+  and updated >= datetime('now', '-2 hours');
 ```
 
 ### Get author information of a particular issue comment
@@ -140,7 +151,8 @@ select
 from
   jira_issue_comment
 where
-  id = '10015';
+  id = '10015'
+  and issue_id = '12345';
 ```
 
 ```sql+sqlite
@@ -155,5 +167,6 @@ select
 from
   jira_issue_comment
 where
-  id = '10015';
+  id = '10015'
+  and issue_id = '12345';
 ```

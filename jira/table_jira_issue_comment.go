@@ -23,10 +23,9 @@ func tableIssueComment(_ context.Context) *plugin.Table {
 			Hydrate:    getIssueComment,
 		},
 		List: &plugin.ListConfig{
-			ParentHydrate: listIssuesForIssueComment,
-			Hydrate:       listIssueComments,
+			Hydrate: listIssueComments,
 			KeyColumns: plugin.KeyColumnSlice{
-				{Name: "issue_id", Require: plugin.Optional},
+				{Name: "issue_id", Require: plugin.Required},
 			},
 		},
 		Columns: commonColumns([]*plugin.Column{
@@ -120,11 +119,10 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 	if h.Item == nil {
 		return nil, nil
 	}
-	issueinfo := h.Item.(IssueInfo)
 	issueId := d.EqualsQualString("issue_id")
 
 	// Minize the API call for given issue ID.
-	if issueId != "" && issueId != issueinfo.ID {
+	if issueId == "" {
 		return nil, nil
 	}
 
@@ -147,7 +145,7 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 	}
 
 	for {
-		apiEndpoint := fmt.Sprintf("rest/api/2/issue/%s/comment?startAt=%d&maxResults=%d", issueinfo.ID, last, limit)
+		apiEndpoint := fmt.Sprintf("rest/api/2/issue/%s/comment?startAt=%d&maxResults=%d", issueId, last, limit)
 
 		req, err := client.NewRequest("GET", apiEndpoint, nil)
 		if err != nil {
@@ -166,7 +164,7 @@ func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.Hydra
 		}
 
 		for _, c := range comments.Comments {
-			d.StreamListItem(ctx, commentWithIssueDetails{c, issueinfo.ID})
+			d.StreamListItem(ctx, commentWithIssueDetails{c, issueId})
 
 			// Context may get cancelled due to manual cancellation or if the limit has been reached
 			if d.RowsRemaining(ctx) == 0 {
@@ -218,29 +216,3 @@ func getIssueComment(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydrate
 
 	return commentWithIssueDetails{*res, issueId}, nil
 }
-
-//// PARENT HYDRATE
-
-// The Steampipe SDK is yet to support making API calls conditionally based on query parameters.
-// For example, when running the query "SELECT * FROM jira_issue_comment WHERE issue_id = '10037';" 
-// we should avoid making an API call to fetch all issues because issue_id is provided in the query parameter, even though jira_issue is the parent of jira_issue_comment.
-// However, for a query like "SELECT * FROM jira_issue_comment", we should first retrieve all issues 
-// and then fetch the comments for each issue.
-func listIssuesForIssueComment(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	issueId := d.EqualsQualString("issue_id")
-
-	if issueId != "" {
-		item := IssueInfo{
-			Issue: jira.Issue{
-				ID: issueId,
-			},
-		}
-
-		d.StreamListItem(ctx, item)
-		
-		return nil, nil
-	}
-	
-	return listIssues(ctx, d, h)
-}
-
