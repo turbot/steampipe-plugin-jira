@@ -1,4 +1,4 @@
-module github.com/turbot/steampipe-plugin-jira
+module github.com/turbot/steampipe-plugin-jira/v2
 
 go 1.24
 
@@ -7,6 +7,7 @@ toolchain go1.24.1
 require (
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/andygrunwald/go-jira/v2 v2.0.0-20230325080157-2e11dffbdb9a
+	github.com/turbot/steampipe-plugin-jira v1.1.0
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.13.0
 )
 
