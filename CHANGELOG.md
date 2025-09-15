@@ -1,3 +1,9 @@
+## v2.0.1 [2025-09-15]
+
+_Bug fixes_
+
+- Fixed the `fields` column in the `jira_issue` table to return all custom fields (e.g., SLA, customer, team metadata) instead of only core fields. ([#183](https://github.com/turbot/steampipe-plugin-jira/pull/183)) (Thanks [@l-teles](https://github.com/l-teles) for the contribution!)
+
 ## v2.0.0 [2025-09-12]
 
 _Breaking changes_
