@@ -225,7 +225,7 @@ func tableIssue(_ context.Context) *plugin.Table {
 				Name:        "fields",
 				Description: "Json object containing important subfields of the issue.",
 				Type:        proto.ColumnType_JSON,
-				Transform:   transform.FromField("V3Issue.Fields"),
+				Transform:   transform.FromField("V3Issue.Fields.RawFields"),
 			},
 			{
 				Name:        "changelog",
