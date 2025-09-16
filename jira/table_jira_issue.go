@@ -386,7 +386,7 @@ func getRequiredFields(ctx context.Context, d *plugin.QueryData) []string {
 		"work_log":   "worklog",
 
 		// JSON fields that need the full field object
-		"fields": "", // Need all fields for this
+		"fields": "*all", // Need all fields for this
 
 		// Custom fields that require *all
 		"epic_key":     "", // Requires custom field access
