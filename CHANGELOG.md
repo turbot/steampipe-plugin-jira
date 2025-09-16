@@ -1,3 +1,9 @@
+## v2.0.2 [2025-09-15]
+
+_Bug fixes_
+
+- Fixed the `fields` column in the `jira_issue` table to consistently return all custom fields instead of `null`. ([#185](https://github.com/turbot/steampipe-plugin-jira/pull/185)) (Thanks [@l-teles](https://github.com/l-teles) for the contribution!)
+
 ## v2.0.1 [2025-09-15]
 
 _Bug fixes_
