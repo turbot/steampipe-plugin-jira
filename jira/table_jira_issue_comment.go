@@ -116,9 +116,6 @@ type commentWithIssueDetails struct {
 //// LIST FUNCTION
 
 func listIssueComments(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	if h.Item == nil {
-		return nil, nil
-	}
 	issueId := d.EqualsQualString("issue_id")
 
 	// Minize the API call for given issue ID.
