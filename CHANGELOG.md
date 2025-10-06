@@ -1,3 +1,13 @@
+## v2.0.3 [2025-10-06]
+
+_Bug fixes_
+
+- Fixed the `jira_issue_comment` table to correctly return data instead of an empty row when `issue_id` is passed in as an optional qual when querying the table. ([#190](https://github.com/turbot/steampipe-plugin-jira/pull/190))
+
+_Dependencies_
+
+- Recompiled plugin with [steampipe-plugin-sdk v5.13.1](https://github.com/turbot/steampipe-plugin-sdk/blob/develop/CHANGELOG.md#v5131-2025-09-25) that addresses critical and high vulnerabilities in dependent packages. ([#191](https://github.com/turbot/steampipe-plugin-jira/pull/191))
+
 ## v2.0.2 [2025-09-15]
 
 _Bug fixes_
