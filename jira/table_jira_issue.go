@@ -569,8 +569,15 @@ func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 
 func extractComponentIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	var componentIds []string
-	for _, item := range d.Value.([]V3Component) {
-		componentIds = append(componentIds, item.ID)
+	switch components := d.Value.(type) {
+	case []V3Component:
+		for _, item := range components {
+			componentIds = append(componentIds, item.ID)
+		}
+	case []*jira.Component:
+		for _, item := range components {
+			componentIds = append(componentIds, item.ID)
+		}
 	}
 	return componentIds, nil
 }
