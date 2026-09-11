@@ -1,3 +1,15 @@
+## v2.0.4 [2026-09-11]
+
+_Bug fixes_
+
+- Fixed the `components` column in the `jira_backlog_issue` table to correctly return component IDs instead of causing a plugin panic. ([#208](https://github.com/turbot/steampipe-plugin-jira/pull/208)) (Thanks [@dark-panda](https://github.com/dark-panda) for the contribution!)
+- Fixed the `actor_account_ids` column in the `jira_project_role` table to correctly handle group actors instead of causing a plugin panic. ([#209](https://github.com/turbot/steampipe-plugin-jira/pull/209)) (Thanks [@dark-panda](https://github.com/dark-panda) for the contribution!)
+
+_Dependencies_
+
+- Recompiled plugin with Go version `1.26`. ([#197](https://github.com/turbot/steampipe-plugin-jira/pull/197))
+- Recompiled plugin with [steampipe-plugin-sdk v6.1.0](https://github.com/turbot/steampipe-plugin-sdk/blob/develop/CHANGELOG.md#v610-2026-08-18) that fixes a data race on connection config between the SDK's connection-update goroutine and plugin worker goroutines.
+
 ## v2.0.3 [2025-10-06]
 
 _Bug fixes_
