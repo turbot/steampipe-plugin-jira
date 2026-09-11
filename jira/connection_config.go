@@ -1,7 +1,7 @@
 package jira
 
 import (
-	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v6/plugin"
 )
 
 type jiraConfig struct {
@@ -17,9 +17,9 @@ func ConfigInstance() interface{} {
 
 // GetConfig :: retrieve and cast connection config from query data
 func GetConfig(connection *plugin.Connection) jiraConfig {
-	if connection == nil || connection.Config == nil {
+	if connection == nil {
 		return jiraConfig{}
 	}
-	config, _ := connection.Config.(jiraConfig)
+	config, _ := connection.GetConfig().(jiraConfig)
 	return config
 }

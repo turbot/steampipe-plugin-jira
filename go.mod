@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/andygrunwald/go-jira/v2 v2.0.0-20230325080157-2e11dffbdb9a
-	github.com/turbot/steampipe-plugin-sdk/v5 v5.14.0
+	github.com/turbot/steampipe-plugin-sdk/v6 v6.1.0
 )
 
 require (
