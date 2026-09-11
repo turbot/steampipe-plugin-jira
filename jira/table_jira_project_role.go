@@ -132,7 +132,9 @@ func getProjectRole(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 func extractActorAccountIds(_ context.Context, d *transform.TransformData) (interface{}, error) {
 	var actorIds []string
 	for _, actor := range d.HydrateItem.(jira.Role).Actors {
-		actorIds = append(actorIds, actor.ActorUser.AccountID)
+		if actor.ActorUser != nil {
+			actorIds = append(actorIds, actor.ActorUser.AccountID)
+		}
 	}
 	return actorIds, nil
 }
