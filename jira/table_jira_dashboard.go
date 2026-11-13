@@ -108,7 +108,7 @@ func listDashboards(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateD
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
 	queryLimit := d.QueryContext.Limit
-	var maxResults int = 1000
+	maxResults := 1000
 	if d.QueryContext.Limit != nil {
 		if *queryLimit < 1000 {
 			maxResults = int(*queryLimit)

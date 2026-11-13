@@ -15,11 +15,11 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v6/plugin/transform"
 )
 
-func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
+func connect(ctx context.Context, d *plugin.QueryData) (*jira.Client, error) {
 
 	// Load connection from cache, which preserves throttling protection etc
 	cacheKey := "atlassian-jira"
-	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
+	if cachedData, ok := d.ConnectionCache.Get(ctx, cacheKey); ok {
 		return cachedData.(*jira.Client), nil
 	}
 
@@ -78,7 +78,7 @@ func connect(_ context.Context, d *plugin.QueryData) (*jira.Client, error) {
 	}
 
 	// Save to cache
-	d.ConnectionManager.Cache.Set(cacheKey, client)
+	_ = d.ConnectionCache.Set(ctx, cacheKey, client)
 
 	// Done
 	return client, nil

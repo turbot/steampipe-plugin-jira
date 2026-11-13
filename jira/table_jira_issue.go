@@ -260,7 +260,7 @@ func listIssues(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData)
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
 	queryLimit := d.QueryContext.Limit
-	var limit int = 500
+	limit := 500
 	if d.QueryContext.Limit != nil {
 		if *queryLimit < 500 {
 			limit = int(*queryLimit)
@@ -552,7 +552,7 @@ func getIssue(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateData) (
 
 func getChangelogForIssue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
 	issue := h.Item.(IssueInfo)
-	return getChangelog(ctx, d, issue.V3Issue.Key)
+	return getChangelog(ctx, d, issue.Key)
 }
 
 func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
@@ -562,7 +562,7 @@ func getStatusValue(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateD
 	if issueStauus != "" {
 		return issueStauus, nil
 	}
-	return issue.V3Issue.Fields.Status.Name, nil
+	return issue.Fields.Status.Name, nil
 }
 
 //// TRANSFORM FUNCTION
@@ -588,10 +588,10 @@ func extractRequiredField(_ context.Context, d *transform.TransformData) (interf
 
 	// For epic, check if there's a parent that is an Epic
 	if param == "epic" {
-		if issueInfo.V3Issue.Fields.Parent != nil {
+		if issueInfo.Fields.Parent != nil {
 			// Check if parent's issue type is Epic
-			if issueInfo.V3Issue.Fields.Parent.Fields.IssueType.Name == "Epic" {
-				return issueInfo.V3Issue.Fields.Parent.Key, nil
+			if issueInfo.Fields.Parent.Fields.IssueType.Name == "Epic" {
+				return issueInfo.Fields.Parent.Key, nil
 			}
 		}
 	}
@@ -599,9 +599,9 @@ func extractRequiredField(_ context.Context, d *transform.TransformData) (interf
 	// Fallback: try to get the custom field key for the requested field type
 	if fieldKey, exists := issueInfo.Keys[param]; exists {
 		// Access the custom field from the raw JSON fields
-		if len(issueInfo.V3Issue.Fields.RawFields) > 0 {
+		if len(issueInfo.Fields.RawFields) > 0 {
 			var fieldsMap map[string]interface{}
-			if err := json.Unmarshal(issueInfo.V3Issue.Fields.RawFields, &fieldsMap); err == nil {
+			if err := json.Unmarshal(issueInfo.Fields.RawFields, &fieldsMap); err == nil {
 				if value, exists := fieldsMap[fieldKey]; exists {
 					return value, nil
 				}
@@ -621,9 +621,9 @@ func extractSprintIdsFromDynamicField(ctx context.Context, d *transform.Transfor
 	}
 
 	// Access the sprint field from the raw JSON fields
-	if len(issueInfo.V3Issue.Fields.RawFields) > 0 {
+	if len(issueInfo.Fields.RawFields) > 0 {
 		var fieldsMap map[string]interface{}
-		if err := json.Unmarshal(issueInfo.V3Issue.Fields.RawFields, &fieldsMap); err == nil {
+		if err := json.Unmarshal(issueInfo.Fields.RawFields, &fieldsMap); err == nil {
 			if sprintData, exists := fieldsMap[sprintFieldKey]; exists && sprintData != nil {
 				return extractSprintIds(ctx, &transform.TransformData{Value: sprintData})
 			}
@@ -642,9 +642,9 @@ func extractSprintNamesFromDynamicField(ctx context.Context, d *transform.Transf
 	}
 
 	// Access the sprint field from the raw JSON fields
-	if len(issueInfo.V3Issue.Fields.RawFields) > 0 {
+	if len(issueInfo.Fields.RawFields) > 0 {
 		var fieldsMap map[string]interface{}
-		if err := json.Unmarshal(issueInfo.V3Issue.Fields.RawFields, &fieldsMap); err == nil {
+		if err := json.Unmarshal(issueInfo.Fields.RawFields, &fieldsMap); err == nil {
 			if sprintData, exists := fieldsMap[sprintFieldKey]; exists && sprintData != nil {
 				return extractSprintNames(ctx, &transform.TransformData{Value: sprintData})
 			}
@@ -713,8 +713,8 @@ func getIssueTags(_ context.Context, d *transform.TransformData) (interface{}, e
 	issue := d.HydrateItem.(IssueInfo)
 
 	tags := make(map[string]bool)
-	if len(issue.V3Issue.Fields.Labels) > 0 {
-		for _, i := range issue.V3Issue.Fields.Labels {
+	if len(issue.Fields.Labels) > 0 {
+		for _, i := range issue.Fields.Labels {
 			tags[i] = true
 		}
 	}
@@ -769,8 +769,8 @@ func getTypeFromFields(_ context.Context, d *transform.TransformData) (interface
 	issueInfo := d.HydrateItem.(IssueInfo)
 
 	// Get the V3Issue JSON directly and access the fields
-	if issueInfo.V3Issue.Fields.IssueType.Name != "" {
-		return issueInfo.V3Issue.Fields.IssueType.Name, nil
+	if issueInfo.Fields.IssueType.Name != "" {
+		return issueInfo.Fields.IssueType.Name, nil
 	}
 
 	return nil, nil
@@ -781,13 +781,13 @@ func getTypeFromFields(_ context.Context, d *transform.TransformData) (interface
 // getFieldKey:: get key for unknown expanded fields
 func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]string, keyName string) string {
 	cacheKey := "issue-" + keyName
-	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
+	if cachedData, ok := d.ConnectionCache.Get(ctx, cacheKey); ok {
 		return cachedData.(string)
 	}
 
 	for k, v := range names {
 		if v == keyName {
-			d.ConnectionManager.Cache.Set(cacheKey, k)
+			_ = d.ConnectionCache.Set(ctx, cacheKey, k)
 			return k
 		}
 	}
@@ -797,7 +797,7 @@ func getFieldKey(ctx context.Context, d *plugin.QueryData, names map[string]stri
 // getCustomFieldMappings retrieves and caches custom field mappings dynamically
 func getCustomFieldMappings(ctx context.Context, d *plugin.QueryData) (map[string]string, error) {
 	cacheKey := "custom_field_mappings"
-	if cachedData, ok := d.ConnectionManager.Cache.Get(cacheKey); ok {
+	if cachedData, ok := d.ConnectionCache.Get(ctx, cacheKey); ok {
 		return cachedData.(map[string]string), nil
 	}
 
@@ -849,7 +849,7 @@ func getCustomFieldMappings(ctx context.Context, d *plugin.QueryData) (map[strin
 	}
 
 	// Cache for 1 hour
-	d.ConnectionManager.Cache.Set(cacheKey, mappings)
+	_ = d.ConnectionCache.Set(ctx, cacheKey, mappings)
 	return mappings, nil
 }
 

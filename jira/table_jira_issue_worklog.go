@@ -143,7 +143,7 @@ func listIssueWorklogs(ctx context.Context, d *plugin.QueryData, _ *plugin.Hydra
 	// If the requested number of items is less than the paging max limit
 	// set the limit to that instead
 	queryLimit := d.QueryContext.Limit
-	var limit int = 5000
+	limit := 5000
 	if d.QueryContext.Limit != nil {
 		if *queryLimit < 5000 {
 			limit = int(*queryLimit)
